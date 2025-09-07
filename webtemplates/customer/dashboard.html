@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Customer Dashboard - NeedAcar</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    body {
+      background-color: #f8f9fa;
+    }
+    .sidebar {
+      height: 100vh;
+      width: 220px;
+      position: fixed;
+      top: 0;
+      left: 0;
+      background-color: #0d6efd;
+      padding-top: 60px;
+      color: #fff;
+    }
+    .sidebar a {
+      display: block;
+      padding: 12px;
+      color: #fff;
+      text-decoration: none;
+    }
+    .sidebar a:hover {
+      background-color: #0b5ed7;
+    }
+    .content {
+      margin-left: 230px;
+      padding: 20px;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Sidebar -->
+  <div class="sidebar">
+    <h4 class="text-center">Customer</h4>
+    <a href="{{ url_for('customer_dashboard') }}">Dashboard</a>
+  
+    <a href="/">Logout</a>
+  </div>
+
+  <!-- Content -->
+  <div class="content">
+    <h2>Welcome to Your Dashboard</h2>
+    <p>Here you can browse available cars, manage your bookings, and update your profile.</p>
+  </div>
+  <!-- Main Content -->
+      <main class="col-md-9 col-lg-10 content">
+        <h2 class="mb-4">Welcome, Admin</h2>
+
+        <div class="row g-4">
+          <!-- Quick Stats -->
+          <div class="col-md-3">
+            <div class="card text-center p-3 shadow-sm">
+              <h5>Total Cars</h5>
+              <p class="fs-4">120</p>
+            </div>
+          </div>
+          <div class="col-md-3">
+            <div class="card text-center p-3 shadow-sm">
+              <h5>Customers</h5>
+              <p class="fs-4">85</p>
+            </div>
+          </div>
+          <div class="col-md-3">
+            <div class="card text-center p-3 shadow-sm">
+              <h5>Bookings</h5>
+              <p class="fs-4">45</p>
+            </div>
+          </div>
+          <div class="col-md-3">
+            <div class="card text-center p-3 shadow-sm">
+              <h5>Revenue</h5>
+              <p class="fs-4">$12,500</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Recent Bookings -->
+        <div class="card mt-4 shadow-sm">
+          <div class="card-header">
+            <h5>Recent Bookings</h5>
+          </div>
+          <div class="card-body">
+            <table class="table table-striped">
+              <thead>
+                <tr>
+                  <th>Booking ID</th>
+                  <th>Customer</th>
+                  <th>Car</th>
+                  <th>Date</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>#B001</td>
+                  <td>John Doe</td>
+                  <td>Toyota Corolla</td>
+                  <td>2025-08-28</td>
+                  <td><span class="badge bg-success">Confirmed</span></td>
+                </tr>
+                <tr>
+                  <td>#B002</td>
+                  <td>Jane Smith</td>
+                  <td>Honda Civic</td>
+                  <td>2025-08-27</td>
+                  <td><span class="badge bg-warning">Pending</span></td>
+                </tr>
+                <tr>
+                  <td>#B003</td>
+                  <td>Mike Ross</td>
+                  <td>BMW 3 Series</td>
+                  <td>2025-08-26</td>
+                  <td><span class="badge bg-danger">Cancelled</span></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+      </main>
+</body>
+</html>
