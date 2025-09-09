@@ -42,15 +42,15 @@
   <div class="row">
     <!-- Sidebar -->
     <nav class="col-md-3 col-lg-2 sidebar">
-      <h3 class="text-white text-center mb-4">Admin Panel</h3>
-      <a href="{{ url_for('admin_dashboard') }}" class="{% if request.path == '/admin/dashboard' %}active{% endif %}">Dashboard</a>
-      <a href="{{ url_for('manage_cars') }}" class="{% if request.path == '/admin/manage_cars' %}active{% endif %}">Manage Cars</a>
-      <a href="{{ url_for('manage_customers') }}" class="{% if request.path == '/admin/manage_customers' %}active{% endif %}">Customers</a>
-      <a href="{{ url_for('manage_bookings') }}" class="{% if request.path == '/admin/manage_bookings' %}active{% endif %}">Bookings</a>
-      <a href="{{ url_for('payments') }}" class="{% if request.path == '/admin/payments' %}active{% endif %}">Payments</a>
-      <a href="{{ url_for('reports') }}" class="{% if request.path == '/admin/reports' %}active{% endif %}">Reports</a>
-      <a href="{{ url_for('settings') }}" class="{% if request.path == '/admin/settings' %}active{% endif %}">Settings</a>
-      <a href="{{ url_for('logout') }}" class="text-danger">Logout</a>
+        <h3 class="text-white text-center mb-4">Admin Panel</h3>
+        <a href="{{ url_for('admin_dashboard') }}" class="{% if request.path == '/admin/dashboard' %}active{% endif %}">Dashboard</a>
+        <a href="{{ url_for('manage_cars') }}" class="{% if request.path == '/admin/manage_cars' %}active{% endif %}">Cars</a>
+        <a href="{{ url_for('manage_customers') }}" class="{% if request.path == '/admin/manage_customers' %}active{% endif %}">Customers</a>
+        <a href="{{ url_for('admin_manage_bookings') }}" class="{% if request.path == '/admin/manage_bookings' %}active{% endif %}">Bookings</a>
+        <a href="{{ url_for('payments') }}" class="{% if request.path == '/admin/payments' %}active{% endif %}">Payments</a>
+        <a href="{{ url_for('reports') }}" class="{% if request.path == '/admin/reports' %}active{% endif %}">Reports</a>
+        <a href="{{ url_for('admin_profile') }}" class="{% if request.path == '/admin/settings' %}active{% endif %}">Settings</a>
+        <a href="{{ url_for('logout') }}" class="text-danger">Logout</a>
     </nav>
 
     <!-- Main Content -->
@@ -124,8 +124,7 @@
                       <!-- Delete Button (POST form for safety) -->
                         <form action="{{ url_for('delete_customer', customer_id=c.customer_id) }}" method="POST" class="d-inline">
                          <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Delete this customer?')">Delete</button>
-                            Delete
-                          </button>
+        
                         </form>
                       </td>
                     </tr>

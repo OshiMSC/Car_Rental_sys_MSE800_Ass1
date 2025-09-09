@@ -5,7 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Customer Dashboard</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
   <style>
     body {
       background-color: #f8f9fa;
@@ -53,29 +52,32 @@
       font-size: 24px;
       margin: 0;
     }
-    .profile-card {
-      background-color: #ffffff;
-      border: 1px solid #dee2e6;
-      border-radius: 12px;
-      box-shadow: 0 2px 10px rgba(0,0,0,0.05);
-      padding: 15px 20px;
-      display: flex;
-      align-items: center;
-      gap: 15px;
+    .notification-wrapper {
+      cursor: pointer;
     }
-    .profile-card i {
-      font-size: 2rem;
-      color: #0d6efd;
+
+    .notification-count {
+      font-size: 0.7rem;
+      padding: 0.25em 0.4em;
     }
-    .profile-info h6 {
-      margin: 0;
-      font-weight: 600;
+
+    .notification-dropdown {
+      position: absolute;
+      right: 0;
+      width: 280px;
+      max-height: 350px;
+      overflow-y: auto;
+      background-color: #fff;
+      border: 1px solid #007bff; /* subtle blue border */
+      border-radius: 8px;
+      z-index: 1000;
     }
-    .profile-info p {
-      margin: 0;
-      font-size: 0.9rem;
-      color: #6c757d;
+
+    .notification-item:hover {
+      background-color: #f1f9ff;
+      border-radius: 5px;
     }
+
     .favorites-box {
       max-height: 600px;
       overflow-y: auto;
@@ -113,17 +115,33 @@
     <main class="col-md-9 col-lg-10 content">
       <div class="d-flex justify-content-between align-items-center mb-4">
         <h2>Dashboard</h2>
+        <!-- Notification Bell -->
+          <div class="notification-wrapper position-relative ms-auto me-3">
+            <i class="bi bi-bell fs-4" id="notificationBell" onclick="toggleNotifications()"></i>
+            <span class="notification-count position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
+              {{ notifications_count }}
+            </span>
 
-        <!-- Profile Card (Quick Access) -->
-        <div class="profile-card">
-          <i class="bi bi-person-circle"></i>
-          <div class="profile-info">
-            <h6>{{ customer.full_name }}</h6>
-            <p>{{ customer.email }}</p>
+            <!-- Dropdown panel -->
+            <div id="notificationDropdown" class="notification-dropdown card shadow-sm p-2 mt-2 d-none">
+              <h6 class="mb-2">Notifications</h6>
+              {% if notifications %}
+                <ul class="list-unstyled mb-0">
+                  {% for note in notifications %}
+                  <li class="notification-item border-bottom py-2 px-1">
+                    <small>{{ note.date }}</small>
+                    <p class="mb-0">{{ note.message }}</p>
+                  </li>
+                  {% endfor %}
+                </ul>
+              {% else %}
+                <p class="text-muted mb-0">No notifications.</p>
+              {% endif %}
+            </div>
           </div>
-          <a href="{{ url_for('customer_profile') }}" class="btn btn-outline-primary btn-sm ms-auto">Edit</a>
-        </div>
+
       </div>
+
 
       <!-- Statistics Cards -->
       <div class="row g-3 mb-4">
@@ -147,8 +165,9 @@
         </div>
       </div>
 
+
       <div class="row g-3">
-        <!-- Available Cars Section -->
+        <!-- Left Side - Available Cars -->
         <div class="col-lg-8">
           <div class="card p-3">
             <h5>Available Cars</h5>
@@ -185,7 +204,7 @@
           </div>
         </div>
 
-        <!-- Favorite Cars Section -->
+        <!-- Right Side - Favorites Box -->
         <div class="col-lg-4">
           <div class="card p-3 favorites-box">
             <h5>My Favorite Cars</h5>
@@ -205,5 +224,21 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+function toggleNotifications() {
+  const dropdown = document.getElementById('notificationDropdown');
+  dropdown.classList.toggle('d-none');
+}
+
+// Optional: close dropdown if clicked outside
+document.addEventListener('click', function(event) {
+  const dropdown = document.getElementById('notificationDropdown');
+  const bell = document.getElementById('notificationBell');
+  if (!bell.contains(event.target) && !dropdown.contains(event.target)) {
+    dropdown.classList.add('d-none');
+  }
+});
+</script>
+
 </body>
 </html>

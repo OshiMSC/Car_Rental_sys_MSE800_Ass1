@@ -20,6 +20,24 @@ def create_admin_table():
             password_hash TEXT NOT NULL
         )
     ''')
+    cursor.execute("SELECT * FROM Admin LIMIT 1")
+    admin = cursor.fetchone()
+
+    if not admin:
+        default_name = "System Admin"
+        default_email = "admin@needcar.com"
+        default_password = "admin123"  # CHANGE THIS in production!
+        password_hash = generate_password_hash(default_password)
+
+        cursor.execute('''
+            INSERT INTO Admin (full_name, email, password_hash)
+            VALUES (?, ?, ?)
+        ''', (default_name, default_email, password_hash))
+
+        conn.commit()
+        print(f"Default admin created -> Email: {default_email} | Password: {default_password}")
+    else:
+        print("Admin already exists, skipping default admin creation.")
     conn.commit()
     conn.close()
 
@@ -36,6 +54,7 @@ def create_customer_table():
             address TEXT NOT NULL,
             license_number TEXT NOT NULL,
             password_hash TEXT NOT NULL
+           
         )
     ''')
     conn.commit()
@@ -65,7 +84,7 @@ def create_booking_table():
     conn = create_connection()
     cursor = conn.cursor()
     cursor.execute('''
-        CREATE TABLE IF NOT EXISTS Booking (
+        CREATE TABLE IF NOT EXISTS booking (
             booking_id INTEGER PRIMARY KEY AUTOINCREMENT,
             customer_id INTEGER NOT NULL,
             car_id INTEGER NOT NULL,
@@ -114,33 +133,6 @@ def create_report_table():
     conn.commit()
     conn.close()
 
-
-def insert_default_admin():
-    conn = create_connection()
-    cursor = conn.cursor()
-
-    # Check if any admin exists
-    cursor.execute("SELECT * FROM Admin LIMIT 1")
-    admin = cursor.fetchone()
-
-    if not admin:
-        default_name = "System Admin"
-        default_email = "admin@needcar.com"
-        default_password = "admin123"  # CHANGE THIS in production!
-        password_hash = generate_password_hash(default_password)
-
-        cursor.execute('''
-            INSERT INTO Admin (full_name, email, password_hash)
-            VALUES (?, ?, ?)
-        ''', (default_name, default_email, password_hash))
-
-        conn.commit()
-        print(f"✅ Default admin created -> Email: {default_email} | Password: {default_password}")
-    else:
-        print("ℹ️ Admin already exists, skipping default admin creation.")
-
-    conn.close()
-
 def create_system_settings_table():
     conn = create_connection()
     cursor = conn.cursor()
@@ -158,6 +150,73 @@ def create_system_settings_table():
     conn.close()
 
 
+def create_favorites_table():
+    conn = create_connection()
+    cursor = conn.cursor()
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS Favorites (
+            favorite_id INTEGER PRIMARY KEY AUTOINCREMENT,
+            customer_id INTEGER NOT NULL,
+            car_id INTEGER NOT NULL,
+            UNIQUE(customer_id, car_id),
+            FOREIGN KEY(customer_id) REFERENCES customers(customer_id),
+            FOREIGN KEY(car_id) REFERENCES car(car_id)
+        )
+    ''')
+    conn.commit()
+    conn.close()
+
+
+def create_ratings_table():
+    conn = create_connection()
+    cursor = conn.cursor()
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS Ratings (
+            rating_id INTEGER PRIMARY KEY AUTOINCREMENT,
+            customer_id INTEGER NOT NULL,
+            car_id INTEGER NOT NULL,
+            rating INTEGER NOT NULL CHECK(rating BETWEEN 1 AND 5),
+            UNIQUE(customer_id, car_id),
+            FOREIGN KEY(customer_id) REFERENCES customers(customer_id),
+            FOREIGN KEY(car_id) REFERENCES car(car_id)
+        )
+    ''')
+    conn.commit()
+    conn.close()
+
+
+def create_notifications_table():
+    conn = create_connection()
+    cursor = conn.cursor()
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS Notifications (
+            notification_id INTEGER PRIMARY KEY AUTOINCREMENT,
+            customer_id INTEGER NOT NULL,
+            message TEXT NOT NULL,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            is_read INTEGER DEFAULT 0,
+            FOREIGN KEY(customer_id) REFERENCES customers(customer_id)
+        )
+    ''')
+    conn.commit()
+    conn.close()
+
+def create_favorite_cars_table():
+    conn = create_connection()
+    cursor = conn.cursor()
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS FavoriteCars (
+            favorite_id INTEGER PRIMARY KEY AUTOINCREMENT,
+            customer_id INTEGER NOT NULL,
+            car_id INTEGER NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(customer_id, car_id) -- Avoid duplicate favorites
+        )
+    ''')
+    conn.commit()
+    conn.close()
+
+
 def setup_database():
     create_admin_table()
     create_customer_table()
@@ -165,9 +224,12 @@ def setup_database():
     create_booking_table()
     create_payment_table()
     create_report_table()
-    insert_default_admin()
     create_system_settings_table()
-    print("Database setup complete.")
+    create_favorites_table()
+    create_ratings_table()
+    create_notifications_table()
+    create_favorite_cars_table()
+
 
 
 if __name__ == "__main__":

@@ -12,6 +12,10 @@
     .sidebar a:hover { background-color: #495057; border-radius: 5px; }
     .content { padding: 20px; }
     .card { border-radius: 12px; }
+    .status-badge { padding: 5px 10px; border-radius: 8px; font-weight: bold; }
+    .status-Confirmed { background-color: #d4edda; color: #155724; }
+    .status-Pending { background-color: #fff3cd; color: #856404; }
+    .status-Cancelled, .status-Failed { background-color: #f8d7da; color: #721c24; }
   </style>
 </head>
 <body>
@@ -20,43 +24,44 @@
     <nav class="col-md-3 col-lg-2 sidebar">
       <h3 class="text-white text-center mb-4">Admin Panel</h3>
       <a href="{{ url_for('admin_dashboard') }}" class="{% if request.path == '/admin/dashboard' %}active{% endif %}">Dashboard</a>
-      <a href="{{ url_for('manage_cars') }}" class="{% if request.path == '/admin/manage_cars' %}active{% endif %}">Manage Cars</a>
+      <a href="{{ url_for('manage_cars') }}" class="{% if request.path == '/admin/manage_cars' %}active{% endif %}">Cars</a>
       <a href="{{ url_for('manage_customers') }}" class="{% if request.path == '/admin/manage_customers' %}active{% endif %}">Customers</a>
-      <a href="{{ url_for('manage_bookings') }}" class="{% if request.path == '/admin/manage_bookings' %}active{% endif %}">Bookings</a>
+      <a href="{{ url_for('admin_manage_bookings') }}" class="{% if request.path == '/admin/manage_bookings' %}active{% endif %}">Bookings</a>
       <a href="{{ url_for('payments') }}" class="{% if request.path == '/admin/payments' %}active{% endif %}">Payments</a>
       <a href="{{ url_for('reports') }}" class="{% if request.path == '/admin/reports' %}active{% endif %}">Reports</a>
-      <a href="{{ url_for('settings') }}" class="{% if request.path == '/admin/settings' %}active{% endif %}">Settings</a>
+      <a href="{{ url_for('admin_profile') }}" class="{% if request.path == '/admin/settings' %}active{% endif %}">Settings</a>
       <a href="{{ url_for('logout') }}" class="text-danger">Logout</a>
     </nav>
 
     <main class="col-md-9 col-lg-10 content">
       <h2 class="mb-4">Reports</h2>
+
+      <h5>Revenue Breakdown</h5>
       <div class="row g-4 mb-4">
-  <div class="col-md-3">
-    <div class="card text-center p-3 shadow-sm">
-      <h5>Total Cars</h5>
-      <p class="fs-4">{{ total_cars }}</p>
-    </div>
-  </div>
-  <div class="col-md-3">
-    <div class="card text-center p-3 shadow-sm">
-      <h5>Customers</h5>
-      <p class="fs-4">{{ total_customers }}</p>
-    </div>
-  </div>
-  <div class="col-md-3">
-    <div class="card text-center p-3 shadow-sm">
-      <h5>Bookings</h5>
-      <p class="fs-4">{{ total_bookings }}</p>
-    </div>
-  </div>
-  <div class="col-md-3">
-    <div class="card text-center p-3 shadow-sm">
-      <h5>Revenue</h5>
-      <p class="fs-4">${{ "%.2f"|format(total_revenue) }}</p>
-    </div>
-  </div>
-</div>
+        <!-- Daily Revenue -->
+        <div class="col-md-4">
+          <div class="card shadow-sm p-3">
+            <h6>Daily Revenue</h6>
+            <canvas id="dailyRevenueChart"></canvas>
+          </div>
+        </div>
+
+        <!-- Weekly Revenue -->
+        <div class="col-md-4">
+          <div class="card shadow-sm p-3">
+            <h6>Weekly Revenue</h6>
+            <canvas id="weeklyRevenueChart"></canvas>
+          </div>
+        </div>
+
+        <!-- Monthly Revenue -->
+        <div class="col-md-4">
+          <div class="card shadow-sm p-3">
+            <h6>Monthly Revenue</h6>
+            <canvas id="monthlyRevenueChart"></canvas>
+          </div>
+        </div>
+      </div>
 
       <div class="card shadow-sm p-4">
         <form class="row g-3 mb-3" method="get" action="/admin/reports">
@@ -74,8 +79,8 @@
         </form>
 
         <h5>Bookings Report</h5>
-        <table class="table table-striped">
-          <thead>
+        <table class="table table-hover table-bordered">
+          <thead class="table-dark">
             <tr>
               <th>#</th>
               <th>Booking ID</th>
@@ -86,20 +91,26 @@
             </tr>
           </thead>
           <tbody>
+            {% for booking in bookings_report %}
             <tr>
-              <td>1</td>
-              <td>#101</td>
-              <td>John Doe</td>
-              <td>Toyota Corolla</td>
-              <td>2025-08-29</td>
-              <td>Confirmed</td>
+              <td>{{ loop.index }}</td>
+              <td>#{{ booking['booking_id'] }}</td>
+              <td>{{ booking['customer'] }}</td>
+              <td>{{ booking['car_name'] }}</td>
+              <td>{{ booking['start_date'] }} → {{ booking['end_date'] }}</td>
+              <td><span class="status-badge status-{{ booking['status'] }}">{{ booking['status'] }}</span></td>
             </tr>
+            {% else %}
+            <tr>
+              <td colspan="6" class="text-center text-muted">No bookings found.</td>
+            </tr>
+            {% endfor %}
           </tbody>
         </table>
 
         <h5>Payments Report</h5>
-        <table class="table table-striped">
-          <thead>
+        <table class="table table-hover table-bordered">
+          <thead class="table-dark">
             <tr>
               <th>#</th>
               <th>Customer</th>
@@ -109,19 +120,94 @@
             </tr>
           </thead>
           <tbody>
+            {% for payment in payments_report %}
             <tr>
-              <td>1</td>
-              <td>John Doe</td>
-              <td>$120.00</td>
-              <td>2025-08-29</td>
-              <td>Paid</td>
+              <td>{{ loop.index }}</td>
+              <td>{{ payment['customer'] }}</td>
+              <td>${{ "%.2f"|format(payment['amount']) }}</td>
+              <td>{{ payment['payment_date'] }}</td>
+              <td><span class="status-badge status-{{ payment['status'] }}">{{ payment['status'] }}</span></td>
             </tr>
+            {% else %}
+            <tr>
+              <td colspan="5" class="text-center text-muted">No payments found.</td>
+            </tr>
+            {% endfor %}
           </tbody>
         </table>
       </div>
     </main>
   </div>
 </div>
+
+<!-- Inject JSON data safely -->
+<script id="dailyLabelsJSON" type="application/json">{{ daily_revenue | map(attribute='day') | list | tojson }}</script>
+<script id="dailyDataJSON" type="application/json">{{ daily_revenue | map(attribute='total') | list | tojson }}</script>
+<script id="weeklyLabelsJSON" type="application/json">{{ weekly_revenue | map(attribute='week') | list | tojson }}</script>
+<script id="weeklyDataJSON" type="application/json">{{ weekly_revenue | map(attribute='total') | list | tojson }}</script>
+<script id="monthlyLabelsJSON" type="application/json">{{ monthly_revenue | map(attribute='month') | list | tojson }}</script>
+<script id="monthlyDataJSON" type="application/json">{{ monthly_revenue | map(attribute='total') | list | tojson }}</script>
+
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+  // Parse JSON from hidden script tags
+  const dailyLabelsJS = JSON.parse(document.getElementById("dailyLabelsJSON").textContent);
+  const dailyDataJS = JSON.parse(document.getElementById("dailyDataJSON").textContent);
+  const weeklyLabelsJS = JSON.parse(document.getElementById("weeklyLabelsJSON").textContent);
+  const weeklyDataJS = JSON.parse(document.getElementById("weeklyDataJSON").textContent);
+  const monthlyLabelsJS = JSON.parse(document.getElementById("monthlyLabelsJSON").textContent);
+  const monthlyDataJS = JSON.parse(document.getElementById("monthlyDataJSON").textContent);
+
+  // Daily Revenue Chart
+  new Chart(document.getElementById('dailyRevenueChart'), {
+    type: 'bar',
+    data: {
+      labels: dailyLabelsJS,
+      datasets: [{
+        label: 'Daily Revenue ($)',
+        data: dailyDataJS,
+        backgroundColor: 'rgba(54, 162, 235, 0.6)',
+        borderColor: 'rgba(54, 162, 235, 1)',
+        borderWidth: 1
+      }]
+    },
+    options: { responsive: true, scales: { y: { beginAtZero: true } } }
+  });
+
+  // Weekly Revenue Chart
+  new Chart(document.getElementById('weeklyRevenueChart'), {
+    type: 'line',
+    data: {
+      labels: weeklyLabelsJS,
+      datasets: [{
+        label: 'Weekly Revenue ($)',
+        data: weeklyDataJS,
+        fill: false,
+        borderColor: 'rgba(75, 192, 192, 1)',
+        tension: 0.1
+      }]
+    },
+    options: { responsive: true }
+  });
+
+  // Monthly Revenue Chart
+  new Chart(document.getElementById('monthlyRevenueChart'), {
+    type: 'bar',
+    data: {
+      labels: monthlyLabelsJS,
+      datasets: [{
+        label: 'Monthly Revenue ($)',
+        data: monthlyDataJS,
+        backgroundColor: 'rgba(255, 206, 86, 0.6)',
+        borderColor: 'rgba(255, 206, 86, 1)',
+        borderWidth: 1
+      }]
+    },
+    options: { responsive: true, scales: { y: { beginAtZero: true } } }
+  });
+});
+</script>
 </body>
 </html>

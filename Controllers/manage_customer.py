@@ -1,5 +1,6 @@
 # manage_customer.py
 from database import create_connection
+from werkzeug.security import generate_password_hash
 
 class CustomerManager:
     def __init__(self):
@@ -19,11 +20,6 @@ class CustomerManager:
             cursor.execute("SELECT * FROM customers")
         return cursor.fetchall()
 
-    def get_customer_by_id(self, customer_id):
-        """Fetch a single customer by ID."""
-        cursor = self.conn.cursor()
-        cursor.execute("SELECT * FROM customers WHERE customer_id = ?", (customer_id,))
-        return cursor.fetchone()
 
     def add_customer(self, full_name, email, phone, address, license_number, password_hash):
         """Insert a new customer into the database."""
@@ -52,7 +48,28 @@ class CustomerManager:
         cursor.execute("DELETE FROM customers WHERE customer_id = ?", (customer_id,))
         self.conn.commit()
         return cursor.rowcount
+    
+    def get_customer_by_id(self, customer_id):
+        """Fetch a single customer's full profile details."""
+        cursor = self.conn.cursor()
+        cursor.execute("""
+            SELECT customer_id, full_name, email, phone, address, license_number, password_hash
+            FROM customers WHERE customer_id = ?
+        """, (customer_id,))
+        return cursor.fetchone()
+
+
+
+    def change_password(self, customer_id, new_password):
+        """Change customer's password securely."""
+        cursor = self.conn.cursor()
+        password_hash = generate_password_hash(new_password)
+        cursor.execute("""
+            UPDATE customers SET password_hash=? WHERE customer_id=?
+        """, (password_hash, customer_id))
+        self.conn.commit()
+        return cursor.rowcount
 
     def __del__(self):
-        """Close DB connection when object is destroyed."""
         self.conn.close()
+

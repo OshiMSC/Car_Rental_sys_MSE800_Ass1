@@ -58,6 +58,24 @@ class CarManager:
         cursor = self.conn.cursor()
         cursor.execute("SELECT * FROM car WHERE car_id = ?", (car_id,))
         return cursor.fetchone()
+    
+    def get_available_cars(self, search_query=None):
+        """Retrieve only cars with 'Available' status, optionally filtered by search query."""
+        cursor = self.conn.cursor()
+        if search_query:
+            query = """
+                SELECT * FROM car
+                WHERE availability_status = 'Available' AND 
+                      (make LIKE ? OR model LIKE ? OR plate_number LIKE ?)
+            """
+            like_query = f"%{search_query}%"
+            cursor.execute(query, (like_query, like_query, like_query))
+        else:
+            cursor.execute("SELECT * FROM car WHERE availability_status = 'Available'")
+        
+        # Return as list of dictionaries for easier template rendering
+        columns = [desc[0] for desc in cursor.description]
+        return [dict(zip(columns, row)) for row in cursor.fetchall()]
 
     def __del__(self):
         """Close database connection when object is destroyed."""
