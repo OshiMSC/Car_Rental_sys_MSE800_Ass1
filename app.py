@@ -1,3 +1,4 @@
+# This page act as a main handler of the system which handle all routes of the user interfaces and send data to the relevant interfaces.
 from flask import Flask, render_template, request, redirect, url_for, flash, session
 import sqlite3
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -11,7 +12,6 @@ from Controllers.manage_payments import Payment
 from Controllers.manage_reports import ReportManager
 from Controllers.manage_settings import SettingsManager
 import os
-from flask import request, flash
 from werkzeug.utils import secure_filename
 from flask import jsonify
 
@@ -20,9 +20,9 @@ def allowed_file(filename):
 
 
 app = Flask(__name__, template_folder="webtemplates")
-app.secret_key = "supersecretkey"  # CHANGE THIS
+app.secret_key = "supersecretkey" 
 
-UPLOAD_FOLDER = "static/uploads/payments"
+UPLOAD_FOLDER = "static/uploads/payments" # All the payment invoices done by customer is stored in this folder
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'pdf'}
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
@@ -32,21 +32,21 @@ def get_db():
     return g.db
 
 
-# ------------------------- HOME -------------------------
+# ------------------------- HOME PAGE-------------------------
 @app.route('/')
 def homepage():
     return render_template('homepage.html')
 
 
-# ------------------------- CUSTOMER REGISTER -------------------------
+# ------------------------- REGISTER A NEW CUSTOMER -------------------------
 @app.route('/register', methods=['GET', 'POST'])
 def customer_register():
     if request.method == 'POST':
-        full_name = request.form['fullname']  # match RegisterUser.html
+        full_name = request.form['fullname']  
         email = request.form['email']
         phone = request.form['phone']
         address = request.form['address']
-        license_number = request.form['license']  # match RegisterUser.html
+        license_number = request.form['license']  
         password = request.form['password']
 
         password_hash = generate_password_hash(password)
@@ -70,13 +70,13 @@ def customer_register():
     return render_template('RegisterUser.html')
 
 
-# ------------------------- COMBINED LOGIN (Admin + Customer) -------------------------
+# ------------------------- USER LOGIN MANAGEMENT -------------------------
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
         email = request.form['email']
         password = request.form['password']
-        role = request.form['role']  # match login.html
+        role = request.form['role']  
 
         conn = create_connection()
         cursor = conn.cursor()
@@ -120,7 +120,6 @@ def admin_profile():
     conn = create_connection()
     cursor = conn.cursor()
 
-    # Handle profile update
     if request.method == 'POST':
         full_name = request.form.get('full_name')
         email = request.form.get('email')
@@ -134,7 +133,6 @@ def admin_profile():
         else:
             flash("Full name and email cannot be empty.", "danger")
 
-    # Fetch current admin details
     cursor.execute("SELECT * FROM Admin WHERE admin_id=?", (admin_id,))
     admin = cursor.fetchone()
     conn.close()
@@ -186,7 +184,7 @@ def admin_dashboard():
     payment_manager = Payment()
     total_revenue = payment_manager.get_total_confirmed_revenue()
 
-    # Get recent payments (latest 5)
+    # SHOW RECENT PAYMENTS
     conn = create_connection()
     cursor = conn.cursor()
     cursor.execute("""
@@ -196,7 +194,7 @@ def admin_dashboard():
         JOIN Booking b ON p.booking_id = b.booking_id
         JOIN car c ON b.car_id = c.car_id
         ORDER BY p.payment_date DESC
-        LIMIT 5
+        LIMIT 7
     """)
     recent_payments = cursor.fetchall()
     conn.close()
@@ -205,7 +203,7 @@ def admin_dashboard():
     conn.row_factory = sqlite3.Row
     cursor = conn.cursor()
 
-    # Quick stats
+    # DATA FOR STAT CARDS
     cursor.execute("""
         SELECT 
             (SELECT COUNT(*) FROM car) AS total_cars,
@@ -219,7 +217,7 @@ def admin_dashboard():
     total_bookings = stats["total_bookings"] or 0
     total_revenue = stats["total_revenue"] or 0.0
 
-    # Fetch recent bookings (most recent 10)
+    # SHOW RECENT BOOKINGS
     cursor.execute("""
         SELECT 
             b.booking_id,
@@ -254,14 +252,7 @@ def admin_dashboard():
         total_revenue=total_revenue,
         bookings=recent_bookings,
         recent_payments=recent_payments)
-        
-    
 
-
-# ------------------------- BOOKING MANAGEMENT (DASHBOARD) -------------------------
-
-
-# ------------------------- PAYMENT MANAGEMENT (DASHBOARD) -------------------------
 @app.route('/admin/payments/update/<int:payment_id>', methods=['POST'])
 def update_payment_dashboard(payment_id):
     if 'admin_id' not in session:
@@ -283,7 +274,7 @@ def delete_payment_dashboard(payment_id):
     flash(f"Payment #{payment_id} deleted successfully.", "success")
     return redirect(url_for('admin_dashboard'))
 
-# ------------------------- ADMIN DASHBOARD -------------------------
+# ------------------------- END ADMIN DASHBOARD -------------------------
 #---------------------- CAR DETAILS MANAGEMENT -------------------------
 car_manager = CarManager()
 @app.route('/admin/manage_cars', methods=['GET'])
@@ -291,7 +282,6 @@ def manage_cars():
     search_query = request.args.get('q')
     cars = car_manager.get_all_cars(search_query)
 
-    # Transform cars into a list of dicts for easy template rendering
     car_list = [
         {
             "car_id": car["car_id"],
@@ -308,7 +298,7 @@ def manage_cars():
 
     return render_template('/admin/manage_cars.html', cars=car_list)
 
-#Add Car ------------------------------------
+# ADD CAR ------------------------------------
 @app.route('/admin/add_car', methods=['POST'])
 def add_car():
     make = request.form.get('make')
@@ -323,7 +313,7 @@ def add_car():
     flash("Car added successfully!", "success")
     return redirect(url_for('manage_cars'))
 
-# Edit Car--------------------------------------
+# EDIT CAR--------------------------------------
 
 @app.route('/admin/edit_car/<int:car_id>', methods=['POST'])
 def edit_car(car_id):
@@ -339,9 +329,7 @@ def edit_car(car_id):
     flash("Car updated successfully!", "success")
     return redirect(url_for('manage_cars'))
 
-
-
-# Delete Car---------------------
+# DELETE CAR---------------------
 
 @app.route('/admin/delete_car/<int:car_id>', methods=['POST'])
 def delete_car(car_id):
@@ -354,13 +342,13 @@ def delete_car(car_id):
 #--------------------------------MANAGE CUSTOMER DETAILS ----------------------------
 customer_manager = CustomerManager()
 
-# ---------------------- CUSTOMER MANAGEMENT -------------------------
-
 @app.route('/admin/manage_customers', methods=['GET'])
 def manage_customers():
     search_query = request.args.get('q')
     customers = customer_manager.get_all_customers(search_query)
     return render_template('/admin/manage_customers.html', customers=customers)
+
+# ADD CUSTOMER ---------------------
 
 @app.route('/admin/add_customer', methods=['POST'])
 def add_customer():
@@ -374,6 +362,8 @@ def add_customer():
     customer_manager.add_customer(full_name, email, phone, address, license_number, password_hash)
     flash("Customer added successfully!", "success")
     return redirect(url_for('manage_customers'))
+
+# EDIT CUSTOMER ---------------------
 
 @app.route('/admin/edit_customer/<int:customer_id>', methods=['POST'])
 def edit_customer(customer_id):
@@ -400,6 +390,8 @@ def edit_customer(customer_id):
         flash(f" Error updating customer: {e}","danger")
     return redirect(url_for('manage_customers',edit_id=customer_id))
 
+# DELETE CUSTOMER ---------------------
+
 @app.route('/admin/delete_customer/<int:customer_id>', methods=['POST'])
 def delete_customer(customer_id):
     customer_manager.delete_customer(customer_id)
@@ -410,9 +402,9 @@ def delete_customer(customer_id):
 
 #---------------------------------MANAGE BOOKINGS ------------------------
 
-# Initialize the unified booking manager
 booking_manager = BookingManager()
 
+# HANDLE BOOKINGS OF EACH CUSTOMER ---------------------
 @app.route('/customer/bookings', methods=['GET'])
 def customer_bookings():
     if "customer_id" not in session:
@@ -459,6 +451,7 @@ def customer_bookings():
         booked_cars=booked_cars
     )
 
+# MAKE A BOOKING ---------------------
 @app.route('/customer/book_car', methods=['POST'])
 def book_car():
    
@@ -470,7 +463,6 @@ def book_car():
     start_date = request.form.get('start_date')
     end_date = request.form.get('end_date')
 
-    # Validate dates
     try:
         start_dt = datetime.strptime(start_date, '%Y-%m-%d').date()
         end_dt = datetime.strptime(end_date, '%Y-%m-%d').date()
@@ -490,10 +482,12 @@ def book_car():
             flash("Sorry, this car is already booked for the selected dates.", "danger")
             return redirect(url_for('customer_bookings'))
 
-    # Create booking
+   
     booking_id = customer_booking_manager.create_booking(customer_id, car_id, start_date, end_date)
     flash(f"Booking request #{booking_id} submitted successfully!", "success")
     return redirect(url_for('customer_bookings'))
+
+# ADD CUSTOMER FAVOURIE CARS ---------------------
 
 @app.route("/customer/add_favorite", methods=["POST"])
 def add_favorite():
@@ -520,6 +514,8 @@ def add_favorite():
 
     return redirect(request.referrer or url_for("customer_bookings"))
 
+#GET ALL THE BOOKINGS OF EACH CAR ------------------------
+
 @app.route('/api/car/<int:car_id>/bookings')
 def get_car_bookings(car_id):
     conn = create_connection()
@@ -542,6 +538,8 @@ def get_car_bookings(car_id):
             "color": "#f1b2b2"
         })
     return jsonify(events)
+
+#MAINTAIN CAR AVAILABILITY IN A CALENDAR ------------------------
 
 @app.route('/customer/car_calendar')
 def car_calendar():
@@ -600,6 +598,8 @@ def payments():
     payments = payment_manager.get_all_payments(search_query)
     return render_template('/admin/payments.html', payments=payments)
 
+#UPDATE PAYMENT STATUS------------------------
+
 @app.route('/admin/payments/update/<int:payment_id>', methods=['POST'])
 def update_payment(payment_id):
     status = request.form['status']
@@ -607,15 +607,17 @@ def update_payment(payment_id):
     payment_manager.update_payment_status(payment_id, status)
     return redirect(url_for('payments'))
 
+#DELETE PAYMENT RECORD ------------------------
+
 @app.route('/admin/payments/delete/<int:payment_id>')
 def delete_payment(payment_id):
     payment_manager = Payment()
     payment_manager.delete_payment(payment_id)
     return redirect(url_for('payments'))
+
 #---------------- END OF PAYMENT MANAGEMENT -------------------------
 
-#------------------PAYMENT MANAGEMENT ------------------------------
-
+#------------------REPORT MANAGEMENT ------------------------------
 
 @app.route('/admin/reports')
 def reports():
@@ -670,7 +672,7 @@ def reports():
     payments_report = cursor.fetchall()
 
     # -------------------- Revenue Breakdown --------------------
-    # Daily Revenue
+    # DAILY REVENUE-----------------------
     cursor.execute("""
         SELECT date(payment_date) AS day, IFNULL(SUM(amount),0) AS total
         FROM Payment
@@ -680,7 +682,7 @@ def reports():
     """)
     daily_revenue = cursor.fetchall()
 
-    # Weekly Revenue
+    # WEEKLY REVENUE ---------------------------
     cursor.execute("""
         SELECT strftime('%Y-%W', payment_date) AS week, IFNULL(SUM(amount),0) AS total
         FROM Payment
@@ -690,7 +692,7 @@ def reports():
     """)
     weekly_revenue = cursor.fetchall()
 
-    # Monthly Revenue
+    # MONTHLY REVENUE --------------------------
     cursor.execute("""
         SELECT strftime('%Y-%m', payment_date) AS month, IFNULL(SUM(amount),0) AS total
         FROM Payment
@@ -731,6 +733,8 @@ def customer_dashboard():
     customer_id = session["customer_id"]
     conn = create_connection()
     cursor = conn.cursor()
+    
+# TOTAL BOOKINGS OF THE CUSTOMER---------------------------------
     cursor.execute("SELECT COUNT(*) FROM booking WHERE customer_id = ?", (customer_id,))
     total_bookings = cursor.fetchone()[0]
     cursor.execute("""
@@ -738,6 +742,8 @@ def customer_dashboard():
         WHERE customer_id = ? AND start_date >= ?
     """, (customer_id, datetime.today().date()))
     upcoming_rentals = cursor.fetchone()[0]
+    
+# FAVOURITE CARS OF THE CUSTOMER
     cursor.execute("SELECT COUNT(*) FROM FavoriteCars WHERE customer_id = ?", (customer_id,))
     total_favorites = cursor.fetchone()[0]
 
@@ -766,8 +772,9 @@ def customer_dashboard():
     return render_template('/customer/dashboard.html', name=session['customer_name'],customer=customer,available_cars=cars,bookings=bookings,notifications=notifications,total_bookings=total_bookings,
         favorite_cars = favorite_cars ,upcoming_rentals=upcoming_rentals,total_favorites =total_favorites,favorite_notifications=favorite_notifications)
 
+#------------------- END OF THE CUSTOMER DASHBOARD -----------------------------
 #------------------------ MANAGE CUSTOMER PAYMENTS------------------------------
-# Controller to view customer payment history
+
 payment_manager = Payment(upload_folder="static/uploads/payments")
 
 
@@ -798,8 +805,8 @@ def customer_payments():
     conn.close()
     return render_template('customer/customer_payments.html', payments=payments, bookings=bookings)
 
-payment = Payment()  # create an instance
-# Route to handle bank transfer upload
+# HANDLE CUSTOMER BANK TRANSFER UPLOAD ------------------------------
+payment = Payment()  
 @app.route('/customer/payments/upload', methods=['POST'])
 def upload_payment():
     if 'customer_id' not in session:
@@ -814,11 +821,11 @@ def upload_payment():
     return redirect(url_for('customer_payments'))
 
 #------------------------- END OF CUSTOMER PAYMENTS ----------------------------
+
 #------------------------- MANAGE CUSTOMER PROFILE-----------------------------
-# --- Customer Profile Route ---
 @app.route("/customer/profile", methods=["GET", "POST"])
 def customer_profile():
-    # Ensure user is logged in
+
     if "customer_id" not in session:
         flash("Please log in to access your profile", "warning")
         return redirect(url_for("login"))
@@ -827,7 +834,7 @@ def customer_profile():
     customer = customer_manager.get_customer_by_id(customer_id)
 
     if request.method == "POST":
-        # Update profile details
+       
         full_name = request.form.get("full_name")
         email = request.form.get("email")
         phone = request.form.get("phone")
@@ -842,7 +849,7 @@ def customer_profile():
 
     return render_template("customer/customer_profile.html", customer=customer)
 
-# --- Change Password Route ---
+# --- Change Password Route -----------------
 @app.route("/customer/change-password", methods=["POST"])
 def change_customer_password():
     if "customer_id" not in session:
@@ -861,7 +868,8 @@ def change_customer_password():
     flash("Password updated successfully!", "success")
     return redirect(url_for("customer_profile"))
 #-------------------------END CUSTOMER PROFILE -------------------------------
-# ------------------------- LOGOUT -------------------------
+
+# ------------------------- LOGOUT FUNCTION------------------------------------
 @app.route('/logout')
 def logout():
     session.clear()

@@ -1,4 +1,4 @@
-# manage_customer.py
+# This page act as a connector between database and all interfaces which manage CRUD operations related to customer mostly by admin:
 from database import create_connection
 from werkzeug.security import generate_password_hash
 
@@ -57,7 +57,6 @@ class CustomerManager:
             FROM customers WHERE customer_id = ?
         """, (customer_id,))
         return cursor.fetchone()
-
 
 
     def change_password(self, customer_id, new_password):

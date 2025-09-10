@@ -1,3 +1,4 @@
+# This page act as a connector between database and all interfaces which manage CRUD operations related to payment handling:
 from database import create_connection
 import os
 from werkzeug.utils import secure_filename
@@ -11,10 +12,12 @@ class Payment:
         os.makedirs(self.upload_folder, exist_ok=True)
 
     def allowed_file(self, filename):
+        """Handle the upload files of customers"""
         return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
     # ---------------- Admin / General ----------------
     def get_all_payments(self, search_query=None):
+        """Retrieve all payment details by search query."""
         conn = create_connection()
         conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
@@ -37,6 +40,7 @@ class Payment:
         return results
 
     def get_payment(self, payment_id):
+        """Retrieve all payment details and filter them by payment Id by search query."""
         conn = create_connection()
         conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
@@ -46,6 +50,7 @@ class Payment:
         return result
 
     def add_payment(self, booking_id, amount, payment_method, status='Pending'):
+        """Insert a new payment details into the database."""
         conn = create_connection()
         cursor = conn.cursor()
         cursor.execute(
@@ -58,6 +63,7 @@ class Payment:
         return last_id
 
     def update_payment_status(self, payment_id, status):
+        """Update a payment detail into the database."""
         if status not in ('Paid', 'Pending', 'Failed'):
             return False  # safeguard
 
@@ -69,6 +75,7 @@ class Payment:
         return True
 
     def delete_payment(self, payment_id):
+        """Delete a payment detail from the database."""
         conn = create_connection()
         cursor = conn.cursor()
         cursor.execute("DELETE FROM Payment WHERE payment_id=?", (payment_id,))
@@ -77,6 +84,7 @@ class Payment:
 
     # ---------------- Customer ----------------
     def get_customer_payments(self, customer_id):
+        """Retrive all the details of the payments done by customers from the database."""
         conn = create_connection()
         conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
@@ -95,6 +103,7 @@ class Payment:
         return results
 
     def upload_payment(self, customer_id, booking_id, file):
+        "Handle the functions of payment invoice uploading"
         if not file or not booking_id:
             return False, "Booking selection and file upload are required."
 
@@ -140,6 +149,7 @@ class Payment:
 
     # ---------------- Reports ----------------
     def get_total_confirmed_revenue(self):
+        """Calculate the total revenue"""
         conn = create_connection()
         conn.row_factory = sqlite3.Row
         cursor = conn.cursor()

@@ -1,15 +1,17 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <title>NeedAcar - Login</title>
-   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
+
 <body>
     <div class="login-container">
         <div class="login-card">
             <h2>Login to NeedAcar</h2>
-            
+
             <form action="{{ url_for('login') }}" method="POST">
                 <!-- Email -->
                 <div class="form-group">
@@ -42,4 +44,5 @@
         </div>
     </div>
 </body>
+
 </html>
