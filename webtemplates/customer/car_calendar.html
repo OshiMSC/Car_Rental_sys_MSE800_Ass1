@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Car Availability</title>
+
+  <!-- Bootstrap -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <!-- FullCalendar -->
+  <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.9/index.global.min.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.9/index.global.min.js"></script>
+
+  <!-- Custom CSS -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+
+  <style>
+    body { background-color: white; }
+    .sidebar {
+      background-color: #0d6efd;
+      min-height: 100vh;
+      padding: 20px;
+    }
+    .sidebar a {
+      display: block;
+      color: white;
+      padding: 10px;
+      text-decoration: none;
+      border-radius: 6px;
+      margin-bottom: 5px;
+    }
+    .sidebar a.active,
+    .sidebar a:hover {
+      background-color: rgba(255, 255, 255, 0.2);
+    }
+    .card {
+      border-radius: 12px;
+      border: 1px solid #007bff;
+      box-shadow: 0 3px 10px rgba(0,0,0,0.05);
+    }
+    /* Date styling */
+    .fc-daygrid-day-number {
+      transition: box-shadow 0.2s ease-in-out;
+    }
+    .fc-daygrid-day-number:hover {
+      box-shadow: 0 0 4px rgba(0,0,0,0.4);
+    }
+  </style>
+</head>
+<body>
+  <div class="container-fluid">
+    <div class="row">
+      
+      <!-- Sidebar -->
+      <nav class="col-md-3 col-lg-2 sidebar">
+        <h3 class="text-white text-center mb-4">Customer Panel</h3>
+        <a href="{{ url_for('customer_dashboard') }}" class="{% if request.path == '/customer/dashboard' %}active{% endif %}">Dashboard</a>
+        <a href="{{ url_for('car_calendar') }}" class="{% if request.path == '/customer/car_calendar' %}active{% endif %}">Car Availability</a>
+        <a href="{{ url_for('customer_bookings') }}" class="{% if request.path == '/customer/bookings' %}active{% endif %}">My Bookings</a>
+        <a href="{{ url_for('customer_profile') }}" class="{% if request.path == '/customer/profile' %}active{% endif %}">Profile</a>
+        <a href="{{ url_for('customer_payments') }}" class="{% if request.path == '/customer/payments' %}active{% endif %}">My Payments</a>
+        <a href="{{ url_for('logout') }}">Logout</a>
+      </nav>
+
+      <!-- Main Content -->
+      <main class="col-md-9 col-lg-10 p-4">
+        <div class="card p-4">
+          <h2 class="mb-4">Car Availability Calendar</h2>
+
+          <!-- Legend -->
+          <div class="mb-3">
+            <span class="badge" style="background-color:#bf6884;">Booked</span>
+            <span class="badge" style="background-color:#A0EBDD; color:black;">Available</span>
+          </div>
+
+          <!-- Car Selection -->
+          <div class="mb-3">
+            <label for="carSelect" class="form-label">Select Car</label>
+            <select id="carSelect" class="form-select">
+              {% for car in cars %}
+              <option value="{{ car['car_id'] }}">{{ car['make'] }} {{ car['model'] }}</option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <!-- Calendar -->
+          <div id="calendar"></div>
+        </div>
+      </main>
+    </div>
+  </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  let calendarEl = document.getElementById('calendar');
+  let calendar = new FullCalendar.Calendar(calendarEl, {
+    initialView: 'dayGridMonth',
+    dayCellDidMount: function(arg) {
+      let dateNumberEl = arg.el.querySelector('.fc-daygrid-day-number');
+      if (dateNumberEl) {
+        dateNumberEl.style.backgroundColor = '#A0EBDD'; // Available = teal
+        dateNumberEl.style.borderRadius = '50%';
+        dateNumberEl.style.padding = '5px 8px';
+        dateNumberEl.style.display = 'inline-block';
+      }
+    },
+    eventDidMount: function(info) {
+      let dateNumberEl = info.el.closest('.fc-daygrid-day')?.querySelector('.fc-daygrid-day-number');
+      if (dateNumberEl) {
+        dateNumberEl.style.backgroundColor = '#bf6884'; // Booked = pink
+        dateNumberEl.style.color = '#000';
+      }
+    },
+    events: [] // loaded dynamically
+  });
+  calendar.render();
+
+  async function loadBookings(carId) {
+    const response = await fetch(`/api/car/${carId}/bookings`);
+    const data = await response.json();
+    calendar.removeAllEvents();
+    calendar.addEventSource(data);
+  }
+
+  let firstCar = document.getElementById('carSelect').value;
+  if (firstCar) loadBookings(firstCar);
+
+  document.getElementById('carSelect').addEventListener('change', function() {
+    loadBookings(this.value);
+  });
+});
+</script>
+
+</body>
+</html>

@@ -76,6 +76,16 @@ class CarManager:
         # Return as list of dictionaries for easier template rendering
         columns = [desc[0] for desc in cursor.description]
         return [dict(zip(columns, row)) for row in cursor.fetchall()]
+    
+    def get_available_favorites(self):
+        query = """
+            SELECT c.car_id, c.make, c.model
+            FROM car c
+            JOIN FavoriteCars f ON f.car_id = c.car_id
+            WHERE f.customer_id = ? AND c.is_available = 1
+        """
+        self.cursor.execute(query, (self.customer_id,))
+        return self.cursor.fetchall()
 
     def __del__(self):
         """Close database connection when object is destroyed."""
