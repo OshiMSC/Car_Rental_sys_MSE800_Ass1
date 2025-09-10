@@ -13,6 +13,7 @@ from Controllers.manage_settings import SettingsManager
 import os
 from flask import request, flash
 from werkzeug.utils import secure_filename
+from flask import jsonify
 
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
@@ -429,7 +430,13 @@ def customer_bookings():
         FROM Booking b
         JOIN car c ON b.car_id = c.car_id
         WHERE b.customer_id = ? AND b.status IN ('Confirmed', 'Pending')
-        ORDER BY b.start_date DESC
+        ORDER BY 
+            CASE b.status
+                WHEN 'Pending' THEN 1
+                WHEN 'Confirmed' THEN 2
+                ELSE 3
+            END,
+            b.start_date DESC
     """, (customer_id,))
     booked_cars = cursor.fetchall()
 
@@ -512,6 +519,38 @@ def add_favorite():
         conn.close()
 
     return redirect(request.referrer or url_for("customer_bookings"))
+
+@app.route('/api/car/<int:car_id>/bookings')
+def get_car_bookings(car_id):
+    conn = create_connection()
+    cursor = conn.cursor()
+    cursor.execute("""
+        SELECT start_date, end_date
+        FROM booking
+        WHERE car_id = ?
+    """, (car_id,))
+    bookings = cursor.fetchall()
+    conn.close()
+
+    events = []
+    for b in bookings:
+        events.append({
+            "title": "Booked",
+            "start": b["start_date"],
+            "end": b["end_date"],
+            "display": "background", 
+            "color": "#f1b2b2"
+        })
+    return jsonify(events)
+
+@app.route('/customer/car_calendar')
+def car_calendar():
+    conn = create_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT car_id, make, model FROM Car")
+    cars = cursor.fetchall()
+    conn.close()
+    return render_template('customer/car_calendar.html', cars=cars)
 
 
 # ---------------- Admin Routes ----------------
@@ -711,6 +750,13 @@ def customer_dashboard():
     """, (customer_id,))
     favorite_cars = cursor.fetchall()
 
+    cursor.execute("""
+        SELECT c.* FROM FavoriteCars f
+        JOIN Car c ON c.car_id = f.car_id
+        WHERE f.customer_id=? AND c.availability_status='Available'
+    """, (customer_id,))
+    favorite_notifications = cursor.fetchall()
+
     conn.close()
 
 
@@ -718,7 +764,7 @@ def customer_dashboard():
     bookings = BookingManager().get_booking_history(customer_id)
     notifications = BookingManager().get_notifications(customer_id)
     return render_template('/customer/dashboard.html', name=session['customer_name'],customer=customer,available_cars=cars,bookings=bookings,notifications=notifications,total_bookings=total_bookings,
-        favorite_cars = favorite_cars ,upcoming_rentals=upcoming_rentals,total_favorites =total_favorites)
+        favorite_cars = favorite_cars ,upcoming_rentals=upcoming_rentals,total_favorites =total_favorites,favorite_notifications=favorite_notifications)
 
 #------------------------ MANAGE CUSTOMER PAYMENTS------------------------------
 # Controller to view customer payment history

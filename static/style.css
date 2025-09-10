@@ -291,4 +291,7 @@ footer {
       background-color: #495057;
       border-radius: 5px;
     }
-   
+   .status-badge { padding: 5px 10px; border-radius: 8px; font-weight: bold; }
+    .status-Confirmed { background-color: #d4edda; color: #155724; }
+    .status-Pending { background-color: #fff3cd; color: #856404; }
+    .status-Cancelled, .status-Failed { background-color: #f8d7da; color: #721c24; }

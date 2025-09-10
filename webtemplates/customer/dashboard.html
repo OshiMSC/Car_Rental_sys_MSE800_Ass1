@@ -93,7 +93,16 @@
     }
     .table tbody tr:hover {
       background-color: #e9ecef;
+
     }
+    .alert ul {
+      margin-top: 10px;
+      padding-left: 20px;
+    }
+    .alert li {
+      margin-bottom: 5px;
+    }
+
   </style>
 </head>
 <body>
@@ -103,6 +112,7 @@
     <nav class="col-md-3 col-lg-2 sidebar">
       <h3 class="text-white text-center mb-4">Customer Panel</h3>
       <a href="{{ url_for('customer_dashboard') }}" class="{% if request.path == '/customer/dashboard' %}active{% endif %}">Dashboard</a>
+      <a href="{{ url_for('car_calendar') }}" class="{% if request.path == '/customer/car_calendar' %}active{% endif %}">Car Availability</a>
       <a href="{{ url_for('customer_bookings') }}" class="{% if request.path == '/customer/bookings' %}active{% endif %}">My Bookings</a>
       <a href="{{ url_for('customer_profile') }}" class="{% if request.path == '/customer/profile' %}active{% endif %}">Profile</a>
       <a href="{{ url_for('customer_payments') }}" class="{% if request.path == '/customer/payments' %}active{% endif %}">My Payments</a>
@@ -124,6 +134,20 @@
           <a href="{{ url_for('customer_profile') }}" class="btn btn-outline-primary btn-sm ms-auto">Edit</a>
         </div>
       </div>
+      <!-- Notification Section (Place after profile-card, before statistics cards) -->
+          {% if favorite_notifications %}
+          <div class="alert alert-success alert-dismissible fade show" role="alert">
+            <strong>Good news!</strong> The following favorite cars are now available:
+            <ul class="mb-0">
+              {% for car in favorite_notifications %}
+              <li>{{ car.make }} {{ car.model }} ({{ car.year }}) - ${{ car.rent_price_per_day }}/day 
+                <a href="{{ url_for('book_car', car_id=car.car_id) }}" class="btn btn-sm btn-primary ms-2">Book Now</a>
+              </li>
+              {% endfor %}
+            </ul>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+          </div>
+          {% endif %}
 
       <!-- Statistics Cards -->
       <div class="row g-3 mb-4">
