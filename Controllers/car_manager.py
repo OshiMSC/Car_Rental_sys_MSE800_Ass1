@@ -1,4 +1,4 @@
-# car_manager.py
+# This page act as a connector between database and all interfaces which manage CRUD operations related to cars:
 from database import create_connection
 
 class CarManager:
@@ -78,6 +78,7 @@ class CarManager:
         return [dict(zip(columns, row)) for row in cursor.fetchall()]
     
     def get_available_favorites(self):
+        """Retrieve only available favorite cars of the each customer filtered by search query."""
         query = """
             SELECT c.car_id, c.make, c.model
             FROM car c

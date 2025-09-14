@@ -1,3 +1,4 @@
+# This page act as a connector between database and all interfaces which manage CRUD operations related to customer and admin bookings:
 import sqlite3
 from database import create_connection
 from datetime import datetime
@@ -15,13 +16,11 @@ class BookingManager:
         query = "SELECT * FROM car WHERE availability_status='Available'"
         params = []
 
-        # Search filter
         if search_query:
             query += " AND (make LIKE ? OR model LIKE ? OR plate_number LIKE ?)"
             like_query = f"%{search_query}%"
             params.extend([like_query, like_query, like_query])
 
-        # Exclude cars already booked
         if start_date and end_date:
             query += """
                 AND car_id NOT IN (
@@ -60,7 +59,6 @@ class BookingManager:
         """, (customer_id, car_id, start_date, end_date))
         booking_id = self.cursor.lastrowid
 
-        # Update car availability
         self.cursor.execute("UPDATE car SET availability_status='Unavailable' WHERE car_id=?", (car_id,))
         self.conn.commit()
         return booking_id
@@ -201,6 +199,19 @@ class BookingManager:
             ORDER BY created_at DESC
         """, (customer_id,))
         return self.cursor.fetchall()
+    
+    def get_customer_bookings_with_fine(self, customer_id):
+        self.cursor.execute('''
+            SELECT b.booking_id, c.make || ' ' || c.model AS car_name, 
+                   b.total_cost,
+                   f.fine_amount
+            FROM booking b
+            JOIN Car c ON b.car_id = c.car_id
+            LEFT JOIN Fines f ON b.booking_id = f.booking_id
+            WHERE b.customer_id = ?
+              AND b.status IN ('Confirmed', 'Completed')
+        ''', (customer_id,))
+        return [dict(row) for row in self.cursor.fetchall()]
 
     def __del__(self):
         self.conn.close()

@@ -1,3 +1,4 @@
+# This page act as a connector between database and all interfaces which manage CRUD operations related to payment handling:
 from database import create_connection
 import os
 from werkzeug.utils import secure_filename
@@ -6,15 +7,19 @@ import sqlite3
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'pdf'}
 
 class Payment:
+
     def __init__(self, upload_folder="static/uploads/payments"):
         self.upload_folder = upload_folder
         os.makedirs(self.upload_folder, exist_ok=True)
-
+        
+        
     def allowed_file(self, filename):
+        """Handle the upload files of customers"""
         return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
     # ---------------- Admin / General ----------------
     def get_all_payments(self, search_query=None):
+        """Retrieve all payment details by search query."""
         conn = create_connection()
         conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
@@ -37,6 +42,7 @@ class Payment:
         return results
 
     def get_payment(self, payment_id):
+        """Retrieve all payment details and filter them by payment Id by search query."""
         conn = create_connection()
         conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
@@ -46,6 +52,7 @@ class Payment:
         return result
 
     def add_payment(self, booking_id, amount, payment_method, status='Pending'):
+        """Insert a new payment details into the database."""
         conn = create_connection()
         cursor = conn.cursor()
         cursor.execute(
@@ -58,6 +65,7 @@ class Payment:
         return last_id
 
     def update_payment_status(self, payment_id, status):
+        """Update a payment detail into the database."""
         if status not in ('Paid', 'Pending', 'Failed'):
             return False  # safeguard
 
@@ -69,6 +77,7 @@ class Payment:
         return True
 
     def delete_payment(self, payment_id):
+        """Delete a payment detail from the database."""
         conn = create_connection()
         cursor = conn.cursor()
         cursor.execute("DELETE FROM Payment WHERE payment_id=?", (payment_id,))
@@ -77,6 +86,7 @@ class Payment:
 
     # ---------------- Customer ----------------
     def get_customer_payments(self, customer_id):
+        """Retrive all the details of the payments done by customers from the database."""
         conn = create_connection()
         conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
@@ -95,40 +105,48 @@ class Payment:
         return results
 
     def upload_payment(self, customer_id, booking_id, file):
+        "Handle the functions of payment invoice uploading"
         if not file or not booking_id:
             return False, "Booking selection and file upload are required."
 
         if not self.allowed_file(file.filename):
             return False, f"Invalid file type. Allowed: {', '.join(ALLOWED_EXTENSIONS)}"
 
-        # Save file
+        # Save file securely
         filename = secure_filename(file.filename)
         filepath = os.path.join(self.upload_folder, filename)
         file.save(filepath)
 
-        # Fetch booking details
         conn = create_connection()
         conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
+
+        # ✅ Fetch booking details from CompletedBookings (to include fine)
         cursor.execute("""
             SELECT 
-                B.booking_id, 
-                B.start_date, 
-                B.end_date, 
+                CB.booking_id,
+                CB.start_date,
+                CB.end_date,
+                CB.fine_amount,
                 C.rent_price_per_day,
-                (julianday(B.end_date) - julianday(B.start_date)) * C.rent_price_per_day AS total_cost
-            FROM booking B
-            JOIN car C ON B.car_id = C.car_id
-            WHERE B.booking_id=? AND B.customer_id=?
+                ((julianday(CB.end_date) - julianday(CB.start_date) + 1) * C.rent_price_per_day) AS rent_cost
+            FROM CompletedBookings CB
+            JOIN Car C ON CB.car_id = C.car_id
+            WHERE CB.booking_id=? AND CB.customer_id=?
         """, (booking_id, customer_id))
+
         booking = cursor.fetchone()
 
         if not booking:
             conn.close()
             return False, "Invalid booking selected."
 
-        amount = booking['total_cost']
+        # ✅ Calculate final amount (rent + fine)
+        rent_cost = booking['rent_cost'] or 0
+        fine = booking['fine_amount'] or 0
+        amount = rent_cost + fine
 
+        # ✅ Insert Payment record
         cursor.execute("""
             INSERT INTO Payment (booking_id, amount, payment_method, status)
             VALUES (?, ?, ?, ?)
@@ -138,8 +156,10 @@ class Payment:
 
         return True, f"Payment of ${amount:.2f} uploaded successfully! Status is Pending."
 
+
     # ---------------- Reports ----------------
     def get_total_confirmed_revenue(self):
+        """Calculate the total revenue"""
         conn = create_connection()
         conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
@@ -151,3 +171,5 @@ class Payment:
         result = cursor.fetchone()
         conn.close()
         return result['total_revenue']
+    
+    

@@ -1,3 +1,4 @@
+# Manage all functions related to create tables in database:
 import sqlite3
 from werkzeug.security import generate_password_hash
 
@@ -5,10 +6,10 @@ DB_NAME = "needcar.db"
 
 def create_connection():
     conn = sqlite3.connect(DB_NAME,check_same_thread=False)
-    conn.row_factory = sqlite3.Row  # so we can access rows like dicts
+    conn.row_factory = sqlite3.Row  
     return conn
 
-
+# TABLE FOR STORE DATA RELATED TO ADMIN ----------------
 def create_admin_table():
     conn = create_connection()
     cursor = conn.cursor()
@@ -26,7 +27,7 @@ def create_admin_table():
     if not admin:
         default_name = "System Admin"
         default_email = "admin@needcar.com"
-        default_password = "admin123"  # CHANGE THIS in production!
+        default_password = "admin123" 
         password_hash = generate_password_hash(default_password)
 
         cursor.execute('''
@@ -41,7 +42,7 @@ def create_admin_table():
     conn.commit()
     conn.close()
 
-
+# TABLE FOR STORE DATA RELATED TO CUSTOMER ----------------
 def create_customer_table():
     conn = create_connection()
     cursor = conn.cursor()
@@ -60,7 +61,7 @@ def create_customer_table():
     conn.commit()
     conn.close()
 
-
+# TABLE FOR STORE DATA RELATED TO CAR ----------------
 def create_car_table():
     conn = create_connection()
     cursor = conn.cursor()
@@ -79,7 +80,7 @@ def create_car_table():
     conn.commit()
     conn.close()
 
-
+# TABLE FOR STORE DATA RELATED TO BOOKING A CAR ----------------
 def create_booking_table():
     conn = create_connection()
     cursor = conn.cursor()
@@ -98,7 +99,7 @@ def create_booking_table():
     conn.commit()
     conn.close()
 
-
+# TABLE FOR STORE DATA RELATED TO PAYMENTS ----------------
 def create_payment_table():
     conn = create_connection()
     cursor = conn.cursor()
@@ -116,7 +117,7 @@ def create_payment_table():
     conn.commit()
     conn.close()
 
-
+# TABLE FOR STORE DATA RELATED TO REPORT ----------------
 def create_report_table():
     conn = create_connection()
     cursor = conn.cursor()
@@ -133,23 +134,7 @@ def create_report_table():
     conn.commit()
     conn.close()
 
-def create_system_settings_table():
-    conn = create_connection()
-    cursor = conn.cursor()
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS SystemSettings (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            tax_fee REAL NOT NULL
-        )
-    ''')
-    # Ensure one default row exists
-    cursor.execute('SELECT COUNT(*) FROM SystemSettings')
-    if cursor.fetchone()[0] == 0:
-        cursor.execute('INSERT INTO SystemSettings (tax_fee) VALUES (?)', (10.0,))
-    conn.commit()
-    conn.close()
-
-
+# TABLE FOR STORE DATA RELATED TO ADMIN ----------------
 def create_favorites_table():
     conn = create_connection()
     cursor = conn.cursor()
@@ -165,25 +150,8 @@ def create_favorites_table():
     ''')
     conn.commit()
     conn.close()
-
-
-def create_ratings_table():
-    conn = create_connection()
-    cursor = conn.cursor()
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS Ratings (
-            rating_id INTEGER PRIMARY KEY AUTOINCREMENT,
-            customer_id INTEGER NOT NULL,
-            car_id INTEGER NOT NULL,
-            rating INTEGER NOT NULL CHECK(rating BETWEEN 1 AND 5),
-            UNIQUE(customer_id, car_id),
-            FOREIGN KEY(customer_id) REFERENCES customers(customer_id),
-            FOREIGN KEY(car_id) REFERENCES car(car_id)
-        )
-    ''')
-    conn.commit()
-    conn.close()
-
+    
+# TABLE FOR STORE DATA RELATED TO NOTIFICATIONS ----------------
 
 def create_notifications_table():
     conn = create_connection()
@@ -200,6 +168,8 @@ def create_notifications_table():
     ''')
     conn.commit()
     conn.close()
+    
+# TABLE FOR STORE DATA RELATED TO FAVOURITE CARS OF CUSTOMER ----------------
 
 def create_favorite_cars_table():
     conn = create_connection()
@@ -216,6 +186,26 @@ def create_favorite_cars_table():
     conn.commit()
     conn.close()
 
+#TABLE FOR STORE  RETURNED CARS-----------------------
+def create_completed_bookings_table():
+    conn = create_connection()
+    cursor = conn.cursor()
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS CompletedBookings (
+            completed_id INTEGER PRIMARY KEY AUTOINCREMENT,
+            booking_id INTEGER NOT NULL,
+            customer_id INTEGER NOT NULL,
+            car_id INTEGER NOT NULL,
+            start_date DATE NOT NULL,
+            end_date DATE NOT NULL,
+            return_date DATE NOT NULL,
+            fine_amount REAL DEFAULT 0,
+            FOREIGN KEY(customer_id) REFERENCES customers(customer_id),
+            FOREIGN KEY(car_id) REFERENCES car(car_id)
+        )
+    ''')
+    conn.commit()
+    conn.close()
 
 def setup_database():
     create_admin_table()
@@ -224,12 +214,10 @@ def setup_database():
     create_booking_table()
     create_payment_table()
     create_report_table()
-    create_system_settings_table()
     create_favorites_table()
-    create_ratings_table()
     create_notifications_table()
     create_favorite_cars_table()
-
+    create_completed_bookings_table()
 
 
 if __name__ == "__main__":

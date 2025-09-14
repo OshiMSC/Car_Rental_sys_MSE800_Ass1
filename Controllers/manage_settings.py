@@ -1,4 +1,4 @@
-# settings_manager.py
+# This page act as a connector between database and all interfaces which manage CRUD operations related to manage Admin profile:
 from database import create_connection
 from werkzeug.security import check_password_hash, generate_password_hash
 
@@ -9,7 +9,6 @@ class SettingsManager:
     def get_settings(self):
         conn = create_connection()
         cursor = conn.cursor()
-        # Ensure SystemSettings table exists
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS SystemSettings (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -53,7 +52,6 @@ class SettingsManager:
         else:
             cursor.execute("UPDATE Admin SET email = ? WHERE admin_id = 1", (email,))
 
-        # Update or insert SystemSettings
         cursor.execute("SELECT COUNT(*) FROM SystemSettings")
         if cursor.fetchone()[0] == 0:
             cursor.execute("INSERT INTO SystemSettings (tax_fee) VALUES (?)", (tax,))

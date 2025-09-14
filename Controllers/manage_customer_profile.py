@@ -1,4 +1,4 @@
-# customer_manager.py
+# This page act as a connector between database and all interfaces which manage CRUD operations related to customer profile:
 from database import create_connection
 from werkzeug.security import generate_password_hash
 

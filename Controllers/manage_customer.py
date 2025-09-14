@@ -1,4 +1,4 @@
-# manage_customer.py
+# This page act as a connector between database and all interfaces which manage CRUD operations related to customer mostly by admin:
 from database import create_connection
 from werkzeug.security import generate_password_hash
 
@@ -31,16 +31,17 @@ class CustomerManager:
         self.conn.commit()
         return cursor.lastrowid
 
-    def update_customer(self, customer_id, full_name, email, phone, address, license_number):
-        """Update customer details (excluding password)."""
+    def update_customer(self, customer_id, email):
+        """Update only the email of a customer."""
         cursor = self.conn.cursor()
         cursor.execute("""
             UPDATE customers
-            SET full_name = ?, email = ?, phone = ?, address = ?, license_number = ?
+            SET email = ?
             WHERE customer_id = ?
-        """, (full_name, email, phone, address, license_number, customer_id))
+        """, (email, customer_id))
         self.conn.commit()
         return cursor.rowcount
+
 
     def delete_customer(self, customer_id):
         """Delete a customer by ID."""
@@ -57,7 +58,6 @@ class CustomerManager:
             FROM customers WHERE customer_id = ?
         """, (customer_id,))
         return cursor.fetchone()
-
 
 
     def change_password(self, customer_id, new_password):
