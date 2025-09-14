@@ -550,21 +550,127 @@ def car_calendar():
     conn.close()
     return render_template('customer/car_calendar.html', cars=cars)
 
+#COST ESTIMATOR AND CAR COMPARISON TOOL-------------------------
+@app.route('/customer/tools')
+def customer_tools():
+    if 'customer_id' not in session:
+        return redirect(url_for('login'))
+
+    conn = create_connection()
+    cursor = conn.cursor()
+    cursor.execute("""
+        SELECT car_id, make, model, rent_price_per_day, seats,availability_status
+        FROM car
+    """)
+    cars = cursor.fetchall()
+    conn.close()
+
+    return render_template('customer/tools.html', cars=cars)
+
+#GET THE DETAILS OF RETURENED CARS AND APPLY FINES
+
+@app.route('/return_car/<int:booking_id>', methods=['POST'])
+def return_car(booking_id):
+    conn = create_connection()
+    cursor = conn.cursor()
+
+    # Get return date & fine from form
+    return_date_str = request.form['return_date']
+    fine_amount = float(request.form['fine_amount'])
+
+    return_date = datetime.strptime(return_date_str, "%Y-%m-%d").date()
+
+    try:
+        # Get booking info
+        cursor.execute("SELECT * FROM booking WHERE booking_id = ?", (booking_id,))
+        booking = cursor.fetchone()
+        if not booking:
+            flash("Booking not found!", "danger")
+            return redirect(url_for('admin_manage_bookings'))
+
+        # Insert into CompletedBookings table
+        cursor.execute("""
+            INSERT INTO CompletedBookings (booking_id, customer_id, car_id, start_date, end_date, return_date, fine_amount)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        """, (booking['booking_id'], booking['customer_id'], booking['car_id'], 
+              booking['start_date'], booking['end_date'], return_date_str, fine_amount))
+
+        # Remove from Booking table
+        cursor.execute("DELETE FROM Booking WHERE booking_id = ?", (booking_id,))
+        conn.commit()
+
+        flash(f"Car returned successfully! Fine: ${fine_amount}", "success")
+
+    except Exception as e:
+        flash(f"Error returning car: {str(e)}", "danger")
+    finally:
+        conn.close()
+
+    return redirect(url_for('admin_manage_bookings'))
+
+#INSERT NEW BOOKING FROM ADMIN VIEW------------------------
+@app.route('/admin/add_booking', methods=['POST'])
+def add_booking():
+    conn = create_connection()
+    cursor = conn.cursor()
+
+    customer_id = request.form['customer_id']
+    car_id = request.form['car_id']
+    start_date = request.form['start_date']
+    end_date = request.form['end_date']
+
+    try:
+        cursor.execute("""
+            INSERT INTO booking (customer_id, car_id, start_date, end_date, status)
+            VALUES (?, ?, ?, ?, 'Confirmed')
+        """, (customer_id, car_id, start_date, end_date))
+        conn.commit()
+        flash("Booking added successfully!", "success")
+    except Exception as e:
+        flash(f"Error adding booking: {str(e)}", "danger")
+    finally:
+        conn.close()
+
+    return redirect(url_for('admin_manage_bookings'))
 
 # ---------------- Admin Routes ----------------
 
 @app.route('/admin/manage_bookings', methods=['GET'])
 def admin_manage_bookings():
-    # Search query from frontend
-    search_query = request.args.get('q')
+    conn = create_connection()
+    cursor = conn.cursor()
 
-    pending_requests = booking_manager.get_pending_bookings()
-    available_cars = booking_manager.get_available_cars_admin(search_query=search_query)
+    # Pending requests
+    cursor.execute("SELECT b.booking_id, c.full_name AS customer_name, car.make || ' ' || car.model AS car_name, b.start_date, b.end_date "
+                   "FROM booking b JOIN customers c ON b.customer_id = c.customer_id "
+                   "JOIN car ON b.car_id = car.car_id WHERE b.status = 'Pending'")
+    pending_requests = cursor.fetchall()
+
+    # Confirmed bookings
+    cursor.execute("SELECT b.booking_id, c.full_name AS customer_name, car.make || ' ' || car.model AS car_name, b.start_date, b.end_date "
+                   "FROM booking b JOIN customers c ON b.customer_id = c.customer_id "
+                   "JOIN car ON b.car_id = car.car_id WHERE b.status = 'Confirmed'")
+    confirmed_bookings = cursor.fetchall()
+
+    # Completed bookings & fines
+    cursor.execute("SELECT cb.completed_id, c.full_name AS customer_name, car.make || ' ' || car.model AS car_name, cb.start_date, cb.end_date, cb.fine_amount "
+                   "FROM CompletedBookings cb JOIN customers c ON cb.customer_id = c.customer_id "
+                   "JOIN car ON cb.car_id = car.car_id")
+    completed_bookings = cursor.fetchall()
+
+    # Available cars
+    cursor.execute("SELECT * FROM car WHERE availability_status = 'Available'")
+    available_cars = cursor.fetchall()
+
+    conn.close()
 
     return render_template(
         'admin/manage_bookings.html',
         pending_requests=pending_requests,
-        available_cars=available_cars
+        available_cars=available_cars,
+        confirmed_bookings=confirmed_bookings, 
+        completed_bookings=completed_bookings,
+                        
     )
 
 @app.route('/admin/update_booking/<int:booking_id>', methods=['POST'])
@@ -784,26 +890,38 @@ def customer_payments():
         return redirect(url_for('login'))
 
     customer_id = session['customer_id']
+
     payments = payment_manager.get_customer_payments(customer_id)
 
-    # Fetch bookings with total cost calculation
     conn = create_connection()
+    conn.row_factory = sqlite3.Row
     cursor = conn.cursor()
+
+    #Fetch completed bookings (rent + fine)
     cursor.execute("""
         SELECT 
-            B.booking_id,
+            CB.booking_id,
             C.make || ' ' || C.model AS car_name,
             C.rent_price_per_day,
-            (julianday(B.end_date) - julianday(B.start_date)) * C.rent_price_per_day AS total_cost
-        FROM Booking B
-        JOIN car C ON B.car_id = C.car_id
-        WHERE B.customer_id=? 
-          AND B.booking_id NOT IN (SELECT booking_id FROM Payment)
-        ORDER BY B.start_date ASC
+            CB.fine_amount,
+            ((julianday(CB.end_date) - julianday(CB.start_date) + 1) * C.rent_price_per_day) AS rent_cost
+        FROM CompletedBookings CB
+        JOIN Car C ON CB.car_id = C.car_id
+        WHERE CB.customer_id=? 
+          AND CB.booking_id NOT IN (SELECT booking_id FROM Payment)
+        ORDER BY CB.start_date ASC
     """, (customer_id,))
-    bookings = cursor.fetchall()
+
+    bookings = []
+    for row in cursor.fetchall():
+        row = dict(row)
+        row['total_cost'] = (row['rent_cost'] or 0) + (row['fine_amount'] or 0)
+        bookings.append(row)
+
     conn.close()
     return render_template('customer/customer_payments.html', payments=payments, bookings=bookings)
+
+
 
 # HANDLE CUSTOMER BANK TRANSFER UPLOAD ------------------------------
 payment = Payment()  
@@ -825,7 +943,6 @@ def upload_payment():
 #------------------------- MANAGE CUSTOMER PROFILE-----------------------------
 @app.route("/customer/profile", methods=["GET", "POST"])
 def customer_profile():
-
     if "customer_id" not in session:
         flash("Please log in to access your profile", "warning")
         return redirect(url_for("login"))
@@ -834,16 +951,9 @@ def customer_profile():
     customer = customer_manager.get_customer_by_id(customer_id)
 
     if request.method == "POST":
-       
-        full_name = request.form.get("full_name")
         email = request.form.get("email")
-        phone = request.form.get("phone")
-        address = request.form.get("address")
-        license_number = request.form.get("license_number")
-
-        customer_manager.update_customer(
-            customer_id, full_name, email, phone, address, license_number
-        )
+        # Only update email
+        customer_manager.update_customer(customer_id, email=email)
         flash("Profile updated successfully!", "success")
         return redirect(url_for("customer_profile"))
 

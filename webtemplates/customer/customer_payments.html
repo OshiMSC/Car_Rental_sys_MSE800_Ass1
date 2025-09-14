@@ -27,6 +27,7 @@
           class="{% if request.path == '/customer/dashboard' %}active{% endif %}">Dashboard</a>
         <a href="{{ url_for('customer_bookings') }}"
           class="{% if request.path == '/customer/bookings' %}active{% endif %}">My Bookings</a>
+          <a href="{{ url_for('customer_tools') }}" class="active">My Tools</a>
         <a href="{{ url_for('car_calendar') }}"
           class="{% if request.path == '/customer/car_calendar' %}active{% endif %}">Car Availability</a>
         <a href="{{ url_for('customer_profile') }}"
@@ -53,16 +54,26 @@
                 <label for="booking_id" class="form-label">Select Booking</label>
                 <select name="booking_id" id="booking_id" class="form-select" required onchange="updateTotalCost()">
                   {% for booking in bookings %}
-                  <option value="{{ booking['booking_id'] }}" data-total="{{ '%.2f'|format(booking['total_cost']) }}">
-                    Booking #{{ booking['booking_id'] }} - {{ booking['car_name'] }} - ${{
-                    "%.2f"|format(booking['total_cost']) }}
-                  </option>
+                  <option value="{{ booking['booking_id'] }}"
+                            data-total="{{ '%.2f'|format(booking['total_cost']) }}"
+                            data-rent="{{ '%.2f'|format(booking['rent_cost']) }}"
+                            data-fine="{{ '%.2f'|format(booking['fine_amount'] if booking['fine_amount'] else 0) }}">
+                      Booking #{{ booking['booking_id'] }} - {{ booking['car_name'] }}
+                      | Rent: ${{ "%.2f"|format(booking['rent_cost']) }}
+                      | Fine: ${{ "%.2f"|format(booking['fine_amount'] if booking['fine_amount'] else 0) }}
+                      | Total: ${{ "%.2f"|format(booking['total_cost']) }}
+                    </option>
                   {% endfor %}
                 </select>
 
                 <!-- Display area for total cost -->
                 <p id="totalCostDisplay" class="mt-2 text-primary fw-bold">
-                  Total Cost: ${{ "%.2f"|format(bookings[0]['total_cost']) if bookings|length > 0 else "0.00" }}
+                  Total Cost: $
+                  {% if bookings|length > 0 %}
+                    {{ "%.2f"|format(bookings[0]['total_cost']) }}
+                  {% else %}
+                    0.00
+                  {% endif %}
                 </p>
               </div>
 
@@ -74,8 +85,6 @@
 
               <button type="submit" class="btn btn-primary">Submit Payment</button>
             </form>
-          </div>
-        </div>
 
         <div class="card p-3">
           <div class="table-responsive">
@@ -121,15 +130,19 @@
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
   <script>
     function updateTotalCost() {
-      const select = document.getElementById("booking_id");
-      const selectedOption = select.options[select.selectedIndex];
-      const totalCost = selectedOption.getAttribute("data-total");
-      document.getElementById("totalCostDisplay").textContent = `Total Cost: $${totalCost}`;
-    }
+        const select = document.getElementById("booking_id");
+        const selectedOption = select.options[select.selectedIndex];
 
-    // Call once on page load so the first booking shows its total cost
-    document.addEventListener("DOMContentLoaded", updateTotalCost);
-  </script>
+        const rent = parseFloat(selectedOption.dataset.rent) || 0;
+        const fine = parseFloat(selectedOption.dataset.fine) || 0;
+        const total = rent + fine;
+
+        document.getElementById("totalCostDisplay").textContent =
+            `Total Cost: $${total.toFixed(2)} (Rent: $${rent.toFixed(2)}, Fine: $${fine.toFixed(2)})`;
+    }
+</script>
+
+
 </body>
 
 </html>

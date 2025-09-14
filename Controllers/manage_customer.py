@@ -31,16 +31,17 @@ class CustomerManager:
         self.conn.commit()
         return cursor.lastrowid
 
-    def update_customer(self, customer_id, full_name, email, phone, address, license_number):
-        """Update customer details (excluding password)."""
+    def update_customer(self, customer_id, email):
+        """Update only the email of a customer."""
         cursor = self.conn.cursor()
         cursor.execute("""
             UPDATE customers
-            SET full_name = ?, email = ?, phone = ?, address = ?, license_number = ?
+            SET email = ?
             WHERE customer_id = ?
-        """, (full_name, email, phone, address, license_number, customer_id))
+        """, (email, customer_id))
         self.conn.commit()
         return cursor.rowcount
+
 
     def delete_customer(self, customer_id):
         """Delete a customer by ID."""

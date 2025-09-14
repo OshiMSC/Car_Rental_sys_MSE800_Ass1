@@ -21,6 +21,7 @@
           class="{% if request.path == '/customer/dashboard' %}active{% endif %}">Dashboard</a>
         <a href="{{ url_for('customer_bookings') }}"
           class="{% if request.path == '/customer/bookings' %}active{% endif %}">My Bookings</a>
+          <a href="{{ url_for('customer_tools') }}" class="active">My Tools</a>
         <a href="{{ url_for('car_calendar') }}"
           class="{% if request.path == '/customer/car_calendar' %}active{% endif %}">Car Availability</a>
         <a href="{{ url_for('customer_profile') }}"
@@ -42,7 +43,7 @@
             <div class="row">
               <div class="col-md-6 mb-3">
                 <label class="form-label">Full Name</label>
-                <input type="text" class="form-control" name="full_name" value="{{ customer['full_name'] }}" required>
+                <input type="text" class="form-control" name="full_name" value="{{ customer['full_name'] }}" readonly>
               </div>
               <div class="col-md-6 mb-3">
                 <label class="form-label">Email</label>
@@ -50,15 +51,15 @@
               </div>
               <div class="col-md-6 mb-3">
                 <label class="form-label">Phone</label>
-                <input type="text" class="form-control" name="phone" value="{{ customer['phone'] }}" required>
+                <input type="text" class="form-control" name="phone" value="{{ customer['phone'] }}" readonly>
               </div>
               <div class="col-md-6 mb-3">
                 <label class="form-label">Address</label>
-                <input type="text" class="form-control" name="address" value="{{ customer['address'] }}">
+                <input type="text" class="form-control" name="address" value="{{ customer['address'] }}"readonly>
               </div>
               <div class="col-md-6 mb-3">
                 <label class="form-label">License Number</label>
-                <input type="text" class="form-control" name="license_number" value="{{ customer['license_number'] }}">
+                <input type="text" class="form-control" name="license_number" value="{{ customer['license_number'] }}" readonly>
               </div>
             </div>
             <button type="submit" class="btn btn-primary w-100 mt-2">Update Profile</button>

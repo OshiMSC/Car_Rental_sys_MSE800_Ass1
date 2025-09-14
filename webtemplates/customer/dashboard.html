@@ -97,7 +97,7 @@
 </head>
 
 <body>
-  <div class="container-fluid">
+  <div class="container-fluid ">
     <div class="row">
       <!-- Sidebar -->
       <nav class="col-md-3 col-lg-2 sidebar">
@@ -106,17 +106,18 @@
           class="{% if request.path == '/customer/dashboard' %}active{% endif %}">Dashboard</a>
         <a href="{{ url_for('car_calendar') }}"
           class="{% if request.path == '/customer/car_calendar' %}active{% endif %}">Car Availability</a>
+            <a href="{{ url_for('customer_tools') }}" class="active">My Tools</a>
         <a href="{{ url_for('customer_bookings') }}"
           class="{% if request.path == '/customer/bookings' %}active{% endif %}">My Bookings</a>
-        <a href="{{ url_for('customer_profile') }}"
-          class="{% if request.path == '/customer/profile' %}active{% endif %}">Profile</a>
         <a href="{{ url_for('customer_payments') }}"
           class="{% if request.path == '/customer/payments' %}active{% endif %}">My Payments</a>
+          <a href="{{ url_for('customer_profile') }}"
+          class="{% if request.path == '/customer/profile' %}active{% endif %}">My Profile</a>
         <a href="{{ url_for('logout') }}">Logout</a>
       </nav>
 
       <!-- Main Content -->
-      <main class="col-md-9 col-lg-10 content">
+      <main class="col-md-9 col-lg-10 content p-3">
         <div class="d-flex justify-content-between align-items-center mb-4">
           <h2>Dashboard</h2>
         <!-- Customer Success / Error Messages -->
@@ -140,7 +141,7 @@
           <ul class="mb-0">
             {% for car in favorite_notifications %}
             <li>{{ car.make }} {{ car.model }} ({{ car.year }}) - ${{ car.rent_price_per_day }}/day
-              <a href="{{ url_for('book_car', car_id=car.car_id) }}" class="btn btn-sm btn-primary ms-2">Book Now</a>
+              <a href="{{ url_for('book_car', car_id=car.car_id) }}" class="btn btn-sm sd ms-2">Book Now</a>
             </li>
             {% endfor %}
           </ul>
@@ -177,7 +178,7 @@
               <h5>Available Cars</h5>
               <form method="get" class="search-bar d-flex mb-2">
                 <input type="text" class="form-control me-2" placeholder="Search by car make/model" name="q">
-                <button class="btn btn-primary" type="submit">Search</button>
+                <button class="btn sd" type="submit">Search</button>
               </form>
               <div class="table-responsive">
                 <table class="table table-striped table-hover">

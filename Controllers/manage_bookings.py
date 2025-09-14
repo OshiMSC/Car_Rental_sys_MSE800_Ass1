@@ -199,6 +199,19 @@ class BookingManager:
             ORDER BY created_at DESC
         """, (customer_id,))
         return self.cursor.fetchall()
+    
+    def get_customer_bookings_with_fine(self, customer_id):
+        self.cursor.execute('''
+            SELECT b.booking_id, c.make || ' ' || c.model AS car_name, 
+                   b.total_cost,
+                   f.fine_amount
+            FROM booking b
+            JOIN Car c ON b.car_id = c.car_id
+            LEFT JOIN Fines f ON b.booking_id = f.booking_id
+            WHERE b.customer_id = ?
+              AND b.status IN ('Confirmed', 'Completed')
+        ''', (customer_id,))
+        return [dict(row) for row in self.cursor.fetchall()]
 
     def __del__(self):
         self.conn.close()

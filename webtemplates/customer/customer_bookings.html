@@ -27,6 +27,7 @@
           class="{% if request.path == '/customer/dashboard' %}active{% endif %}">Dashboard</a>
         <a href="{{ url_for('car_calendar') }}"
           class="{% if request.path == '/customer/car_calendar' %}active{% endif %}">Car Availability</a>
+          <a href="{{ url_for('customer_tools') }}" class="active">My Tools</a>
         <a href="{{ url_for('customer_bookings') }}"
           class="{% if request.path == '/customer/bookings' %}active{% endif %}">My Bookings</a>
         <a href="{{ url_for('customer_profile') }}"

@@ -186,6 +186,26 @@ def create_favorite_cars_table():
     conn.commit()
     conn.close()
 
+#TABLE FOR STORE  RETURNED CARS-----------------------
+def create_completed_bookings_table():
+    conn = create_connection()
+    cursor = conn.cursor()
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS CompletedBookings (
+            completed_id INTEGER PRIMARY KEY AUTOINCREMENT,
+            booking_id INTEGER NOT NULL,
+            customer_id INTEGER NOT NULL,
+            car_id INTEGER NOT NULL,
+            start_date DATE NOT NULL,
+            end_date DATE NOT NULL,
+            return_date DATE NOT NULL,
+            fine_amount REAL DEFAULT 0,
+            FOREIGN KEY(customer_id) REFERENCES customers(customer_id),
+            FOREIGN KEY(car_id) REFERENCES car(car_id)
+        )
+    ''')
+    conn.commit()
+    conn.close()
 
 def setup_database():
     create_admin_table()
@@ -197,6 +217,7 @@ def setup_database():
     create_favorites_table()
     create_notifications_table()
     create_favorite_cars_table()
+    create_completed_bookings_table()
 
 
 if __name__ == "__main__":

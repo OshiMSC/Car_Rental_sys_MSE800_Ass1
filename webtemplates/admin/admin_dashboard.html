@@ -84,7 +84,6 @@
                   <th>Start Date</th>
                   <th>End Date</th>
                   <th>Booking Status</th>
-                  <th>Payment Status</th>
                 </tr>
               </thead>
               <tbody>
@@ -104,15 +103,6 @@
                     <span class="badge bg-primary">Completed</span>
                     {% else %}
                     <span class="badge bg-danger">Cancelled</span>
-                    {% endif %}
-                  </td>
-                  <td>
-                    {% if booking.payment_status=='Paid' %}
-                    <span class="badge bg-success">Paid</span>
-                    {% elif booking.payment_status=='Pending' %}
-                    <span class="badge bg-warning">Pending</span>
-                    {% else %}
-                    <span class="badge bg-danger">Failed</span>
                     {% endif %}
                   </td>
                 </tr>

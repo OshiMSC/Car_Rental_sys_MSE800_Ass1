@@ -11,15 +11,14 @@
 {% endwith %}
 
 <script>
-  // Auto-hide flash messages after 5 seconds
+  // Auto-hide flash messages after 1 minute
   document.addEventListener('DOMContentLoaded', () => {
     const flashMessages = document.querySelectorAll('.flash-message');
     flashMessages.forEach(msg => {
       setTimeout(() => {
-        // Bootstrap 5 fade out
         const bsAlert = bootstrap.Alert.getOrCreateInstance(msg);
         bsAlert.close();
-      }, 5000); // 5000ms = 5 seconds
+      }, 60000); 
     });
   });
 </script>

@@ -32,9 +32,6 @@ class ReportManager:
         )
         self.conn.commit()
 
-    def __init__(self):
-        self.conn = create_connection()
-        self.cursor = self.conn.cursor()
 
     def get_bookings_report(self, from_date=None, to_date=None):
         query = """
@@ -88,3 +85,6 @@ class ReportManager:
                 "status": r[4]
             })
         return payments
+
+    def __del__(self):
+        self.conn.close()
