@@ -1,37 +1,57 @@
-# This page act as a connector between database and all interfaces which manage CRUD operations related to report generating:
+# manage_reports.py
 import sqlite3
 from database import create_connection
 
 class ReportManager:
-    def __init__(self):
-        self.conn = create_connection()
-        self.cursor = self.conn.cursor()
+    _instance = None
 
+    def __new__(cls):
+        if cls._instance is None:
+            cls._instance = super(ReportManager, cls).__new__(cls)
+            cls._instance.__initialize()
+        return cls._instance
+
+    def __initialize(self):
+        """Initialize database connection once (Singleton)"""
+        self.__conn = create_connection()
+        self.__conn.row_factory = sqlite3.Row
+        self.__cursor = self.__conn.cursor()
+
+    # ---------------- Private Helper ----------------
+    def __execute(self, query, params=(), fetchone=False, fetchall=False, commit=False):
+        self.__cursor.execute(query, params)
+        if commit:
+            self.__conn.commit()
+        if fetchone:
+            return self.__cursor.fetchone()
+        if fetchall:
+            return self.__cursor.fetchall()
+        return self.__cursor
+
+    # ---------------- Reports Summary ----------------
     def get_total_cars(self):
-        self.cursor.execute("SELECT COUNT(*) FROM car")
-        return self.cursor.fetchone()[0]
+        result = self.__execute("SELECT COUNT(*) FROM car", fetchone=True)
+        return result[0] if result else 0
 
     def get_total_customers(self):
-        self.cursor.execute("SELECT COUNT(*) FROM customers")
-        return self.cursor.fetchone()[0]
+        result = self.__execute("SELECT COUNT(*) FROM customers", fetchone=True)
+        return result[0] if result else 0
 
     def get_total_bookings(self):
-        self.cursor.execute("SELECT COUNT(*) FROM Booking")
-        return self.cursor.fetchone()[0]
+        result = self.__execute("SELECT COUNT(*) FROM Booking", fetchone=True)
+        return result[0] if result else 0
 
     def get_total_revenue(self):
-        self.cursor.execute("SELECT SUM(amount) FROM Payment WHERE status='Paid'")
-        total = self.cursor.fetchone()[0]
-        return total if total else 0.0
+        result = self.__execute("SELECT SUM(amount) FROM Payment WHERE status='Paid'", fetchone=True)
+        return result[0] if result[0] else 0.0
 
-  
+    # ---------------- Report Actions ----------------
     def save_report(self, admin_id, report_type, notes=""):
-        self.cursor.execute(
+        self.__execute(
             "INSERT INTO Report (admin_id, report_type, notes) VALUES (?, ?, ?)",
-            (admin_id, report_type, notes)
+            (admin_id, report_type, notes),
+            commit=True
         )
-        self.conn.commit()
-
 
     def get_bookings_report(self, from_date=None, to_date=None):
         query = """
@@ -47,18 +67,18 @@ class ReportManager:
             params = [from_date, to_date]
 
         query += " ORDER BY b.start_date DESC"
-        self.cursor.execute(query, params)
-        rows = self.cursor.fetchall()
-        bookings = []
-        for r in rows:
-            bookings.append({
-                "booking_id": r[0],
-                "customer": r[1],
-                "car": r[2],
-                "date": r[3],
-                "status": r[4]
-            })
-        return bookings
+        rows = self.__execute(query, params, fetchall=True)
+
+        return [
+            {
+                "booking_id": r["booking_id"],
+                "customer": r["customer"],
+                "car": r["car"],
+                "date": r["start_date"],
+                "status": r["status"],
+            }
+            for r in rows
+        ]
 
     def get_payments_report(self, from_date=None, to_date=None):
         query = """
@@ -73,18 +93,50 @@ class ReportManager:
             params = [from_date, to_date]
 
         query += " ORDER BY p.payment_date DESC"
-        self.cursor.execute(query, params)
-        rows = self.cursor.fetchall()
-        payments = []
-        for r in rows:
-            payments.append({
-                "payment_id": r[0],
-                "customer": r[1],
-                "amount": r[2],
-                "date": r[3],
-                "status": r[4]
-            })
-        return payments
+        rows = self.__execute(query, params, fetchall=True)
+
+        return [
+            {
+                "payment_id": r["payment_id"],
+                "customer": r["customer"],
+                "amount": r["amount"],
+                "date": r["payment_date"],
+                "status": r["status"],
+            }
+            for r in rows
+        ]
+
+    # ---------------- Revenue Breakdown ----------------
+    def get_daily_revenue(self):
+        rows = self.__execute("""
+            SELECT date(payment_date) AS day, IFNULL(SUM(amount),0) AS total
+            FROM Payment
+            WHERE status='Paid'
+            GROUP BY day
+            ORDER BY day ASC
+        """, fetchall=True)
+        return [{"day": r["day"], "total": r["total"]} for r in rows]
+
+    def get_weekly_revenue(self):
+        rows = self.__execute("""
+            SELECT strftime('%Y-%W', payment_date) AS week, IFNULL(SUM(amount),0) AS total
+            FROM Payment
+            WHERE status='Paid'
+            GROUP BY week
+            ORDER BY week ASC
+        """, fetchall=True)
+        return [{"week": r["week"], "total": r["total"]} for r in rows]
+
+    def get_monthly_revenue(self):
+        rows = self.__execute("""
+            SELECT strftime('%Y-%m', payment_date) AS month, IFNULL(SUM(amount),0) AS total
+            FROM Payment
+            WHERE status='Paid'
+            GROUP BY month
+            ORDER BY month ASC
+        """, fetchall=True)
+        return [{"month": r["month"], "total": r["total"]} for r in rows]
 
     def __del__(self):
-        self.conn.close()
+        if hasattr(self, "_ReportManager__conn"):
+            self.__conn.close()

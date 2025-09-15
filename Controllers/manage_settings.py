@@ -1,62 +1,42 @@
-# This page act as a connector between database and all interfaces which manage CRUD operations related to manage Admin profile:
 from database import create_connection
 from werkzeug.security import check_password_hash, generate_password_hash
 
-class SettingsManager:
-    def __init__(self):
-        pass
+from database import create_connection
+import sqlite3
+from werkzeug.security import generate_password_hash
 
-    def get_settings(self):
-        conn = create_connection()
-        cursor = conn.cursor()
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS SystemSettings (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                tax_fee REAL NOT NULL
-            )
-        """)
+class AdminManager:
+    _instance = None
 
-        cursor.execute("SELECT email FROM Admin LIMIT 1")
-        admin = cursor.fetchone()
-        email = admin['email'] if admin else ''
+    def __new__(cls):
+        if cls._instance is None:
+            cls._instance = super(AdminManager, cls).__new__(cls)
+            cls._instance.__initialize()
+        return cls._instance
 
-        cursor.execute("SELECT tax_fee FROM SystemSettings LIMIT 1")
-        tax_row = cursor.fetchone()
-        tax_fee = tax_row[0] if tax_row else 0.0
+    def __initialize(self):
+        self.conn = create_connection()
+        self.conn.row_factory = sqlite3.Row
+        self.cursor = self.conn.cursor()
 
-        conn.close()
-        return {"email": email, "tax": tax_fee}
+    # Get admin profile by ID
+    def get_admin_by_id(self, admin_id):
+        self.cursor.execute("SELECT * FROM Admin WHERE admin_id=?", (admin_id,))
+        return self.cursor.fetchone()
 
-    def verify_current_password(self, current_password):
-        """Checks if current password matches stored admin password."""
-        conn = create_connection()
-        cursor = conn.cursor()
-        cursor.execute("SELECT password_hash FROM Admin LIMIT 1")
-        row = cursor.fetchone()
-        conn.close()
+    # Update admin profile
+    def update_profile(self, admin_id, full_name, email):
+        self.cursor.execute(
+            "UPDATE Admin SET full_name=?, email=? WHERE admin_id=?",
+            (full_name, email, admin_id)
+        )
+        self.conn.commit()
 
-        if not row:
-            return False
-
-        stored_hash = row['password_hash'] if 'password_hash' in row.keys() else row[0]
-        return check_password_hash(stored_hash, current_password)
-
-    def update_settings(self, email, password, tax):
-        conn = create_connection()
-        cursor = conn.cursor()
-
-        # Update admin email & password (if provided)
-        if password:
-            password_hash = generate_password_hash(password)
-            cursor.execute("UPDATE Admin SET email = ?, password_hash = ? WHERE admin_id = 1", (email, password_hash))
-        else:
-            cursor.execute("UPDATE Admin SET email = ? WHERE admin_id = 1", (email,))
-
-        cursor.execute("SELECT COUNT(*) FROM SystemSettings")
-        if cursor.fetchone()[0] == 0:
-            cursor.execute("INSERT INTO SystemSettings (tax_fee) VALUES (?)", (tax,))
-        else:
-            cursor.execute("UPDATE SystemSettings SET tax_fee = ? WHERE id = 1", (tax,))
-
-        conn.commit()
-        conn.close()
+    # Change admin password
+    def change_password(self, admin_id, new_password):
+        hashed_password = generate_password_hash(new_password)
+        self.cursor.execute(
+            "UPDATE Admin SET password_hash=? WHERE admin_id=?",
+            (hashed_password, admin_id)
+        )
+        self.conn.commit()
