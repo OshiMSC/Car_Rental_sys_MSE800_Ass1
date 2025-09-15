@@ -90,8 +90,8 @@
                 {% for booking in bookings %}
                 <tr>
                   <td>#{{ booking.booking_id }}</td>
-                  <td>{{ booking.customer }}</td>
-                  <td>{{ booking.car }}</td>
+                  <td>{{ booking.customer_name }}</td>
+                  <td>{{ booking.car_name }}</td>
                   <td>{{ booking.start_date }}</td>
                   <td>{{ booking.end_date }}</td>
                   <td>
@@ -153,7 +153,7 @@
                     {% endif %}
                   </td>
                   <td>
-                    <form action="{{ url_for('update_payment_dashboard', payment_id=payment['payment_id']) }}"
+                    <form action="{{ url_for('update_payment', payment_id=payment['payment_id']) }}"
                       method="POST" class="d-inline">
                       <select name="status" class="form-select form-select-sm d-inline w-auto">
                         <option value="Pending" {% if payment['status']=='Pending' %}selected{% endif %}>Pending
@@ -163,7 +163,7 @@
                       </select>
                       <button type="submit" class="btn btn-sm btn-warning">Update</button>
                     </form>
-                    <a href="{{ url_for('delete_payment_dashboard', payment_id=payment['payment_id']) }}"
+                    <a href="{{ url_for('delete_payment', payment_id=payment['payment_id']) }}"
                       class="btn btn-sm btn-danger" onclick="return confirm('Are you sure?')">Delete</a>
                   </td>
                 </tr>

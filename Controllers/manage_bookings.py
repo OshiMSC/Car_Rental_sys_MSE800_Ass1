@@ -1,42 +1,49 @@
-# This page act as a connector between database and all interfaces which manage CRUD operations related to customer and admin bookings:
 import sqlite3
 from database import create_connection
 from datetime import datetime
 
 class BookingManager:
-    def __init__(self):
-        self.conn = create_connection()
-        self.conn.row_factory = sqlite3.Row
-        self.cursor = self.conn.cursor()
+    """Singleton class to manage all booking-related database operations."""
+
+    _instance = None
+
+    def __new__(cls):
+        if cls._instance is None:
+            cls._instance = super().__new__(cls)
+            cls._instance._initialize()
+        return cls._instance
+
+    def _initialize(self):
+        self._conn = create_connection()
+        self._conn.row_factory = sqlite3.Row
+        self._cursor = self._conn.cursor()
+
+    # ----------------- Utility Methods -----------------
+
+    def _execute(self, query, params=(), commit=False, fetchone=False, fetchall=False):
+        try:
+            self._cursor.execute(query, params)
+            if commit:
+                self._conn.commit()
+            if fetchone:
+                return self._cursor.fetchone()
+            if fetchall:
+                return self._cursor.fetchall()
+            return self._cursor
+        except Exception:
+            try:
+                self._conn.rollback()
+            except Exception:
+                pass
+            raise
+
+    def _rows_to_dicts(self, rows):
+        return [dict(r) for r in rows]
 
     # ---------------- Customer Methods ----------------
 
-    def get_available_cars(self, search_query=None, start_date=None, end_date=None):
-        """Get all available cars. Optionally filter by search query and exclude cars already booked in the date range."""
-        query = "SELECT * FROM car WHERE availability_status='Available'"
-        params = []
-
-        if search_query:
-            query += " AND (make LIKE ? OR model LIKE ? OR plate_number LIKE ?)"
-            like_query = f"%{search_query}%"
-            params.extend([like_query, like_query, like_query])
-
-        if start_date and end_date:
-            query += """
-                AND car_id NOT IN (
-                    SELECT car_id FROM booking
-                    WHERE status IN ('Pending', 'Confirmed')
-                    AND NOT (end_date < ? OR start_date > ?)
-                )
-            """
-            params.extend([start_date, end_date])
-
-        self.cursor.execute(query, params)
-        return [dict(row) for row in self.cursor.fetchall()]
-
     def get_customer_bookings(self, customer_id):
-        """Fetch all bookings for a customer (Pending + Confirmed + Cancelled)"""
-        self.cursor.execute("""
+        rows = self._execute("""
             SELECT 
                 b.booking_id,
                 b.status,
@@ -45,42 +52,45 @@ class BookingManager:
                 car.make || ' ' || car.model AS car_name
             FROM booking b
             JOIN car ON b.car_id = car.car_id
-            WHERE b.customer_id = ?
-            ORDER BY b.start_date ASC
-        """, (customer_id,))
-        return [dict(row) for row in self.cursor.fetchall()]
-    
-    
+            WHERE b.customer_id = ? AND b.status IN ('Confirmed', 'Pending')
+            ORDER BY 
+                CASE b.status
+                    WHEN 'Pending' THEN 1
+                    WHEN 'Confirmed' THEN 2
+                    ELSE 3
+                END,
+                b.start_date DESC
+        """, (customer_id,), fetchall=True)
+        return self._rows_to_dicts(rows)
+
     def create_booking(self, customer_id, car_id, start_date, end_date):
-        """Create a new booking with status 'Pending' and mark car as unavailable."""
-        self.cursor.execute("""
+        cur = self._execute("""
             INSERT INTO booking (customer_id, car_id, start_date, end_date, status)
             VALUES (?, ?, ?, ?, 'Pending')
-        """, (customer_id, car_id, start_date, end_date))
-        booking_id = self.cursor.lastrowid
+        """, (customer_id, car_id, start_date, end_date), commit=True)
+        booking_id = cur.lastrowid
 
-        self.cursor.execute("UPDATE car SET availability_status='Unavailable' WHERE car_id=?", (car_id,))
-        self.conn.commit()
+        # Mark car unavailable immediately
+        self._execute("UPDATE car SET availability_status='Unavailable' WHERE car_id=?",
+                      (car_id,), commit=True)
         return booking_id
 
     def update_booking_status(self, booking_id, new_status):
-        """Update booking status and adjust car availability if necessary."""
-        self.cursor.execute("SELECT car_id FROM booking WHERE booking_id=?", (booking_id,))
-        car = self.cursor.fetchone()
+        car = self._execute("SELECT car_id FROM booking WHERE booking_id=?",
+                            (booking_id,), fetchone=True)
         if not car:
             return False
 
-        self.cursor.execute("UPDATE booking SET status=? WHERE booking_id=?", (new_status, booking_id))
+        self._execute("UPDATE booking SET status=? WHERE booking_id=?",
+                      (new_status, booking_id), commit=True)
 
         if new_status in ('Cancelled', 'Completed'):
-            self.cursor.execute("UPDATE car SET availability_status='Available' WHERE car_id=?", (car['car_id'],))
-
-        self.conn.commit()
+            self._execute("UPDATE car SET availability_status='Available' WHERE car_id=?",
+                          (car['car_id'],), commit=True)
         return True
 
     def get_booking_history(self, customer_id):
-        """Get customer's booking history with payments."""
-        self.cursor.execute("""
+        rows = self._execute("""
             SELECT B.booking_id, C.make || ' ' || C.model AS car_name,
                    B.start_date, B.end_date, B.status, P.amount as fee
             FROM booking B
@@ -88,13 +98,12 @@ class BookingManager:
             LEFT JOIN Payment P ON P.booking_id = B.booking_id
             WHERE B.customer_id=?
             ORDER BY B.start_date DESC
-        """, (customer_id,))
-        return [dict(row) for row in self.cursor.fetchall()]
+        """, (customer_id,), fetchall=True)
+        return self._rows_to_dicts(rows)
 
     # ---------------- Admin Methods ----------------
 
     def get_all_bookings(self, search_query=None):
-        """Get all bookings with optional search filter."""
         query = """
             SELECT b.booking_id, c.full_name AS customer_name, 
                    car.make || ' ' || car.model AS car_name,
@@ -104,21 +113,16 @@ class BookingManager:
             JOIN car ON b.car_id = car.car_id
         """
         params = []
-
         if search_query:
-            query += """
-                WHERE c.full_name LIKE ? OR car.model LIKE ? 
-                   OR car.make LIKE ? OR b.start_date LIKE ? OR b.end_date LIKE ?
-            """
+            query += " WHERE c.full_name LIKE ? OR car.model LIKE ? OR car.make LIKE ? OR b.start_date LIKE ? OR b.end_date LIKE ?"
             like_query = f"%{search_query}%"
-            params = [like_query, like_query, like_query, like_query, like_query]
+            params = [like_query]*5
 
-        self.cursor.execute(query, params)
-        return [dict(row) for row in self.cursor.fetchall()]
+        rows = self._execute(query, params, fetchall=True)
+        return self._rows_to_dicts(rows)
 
     def get_pending_bookings(self):
-        """Get all bookings with status 'Pending'."""
-        self.cursor.execute("""
+        rows = self._execute("""
             SELECT 
                 b.booking_id,
                 c.full_name AS customer_name,
@@ -131,87 +135,212 @@ class BookingManager:
             JOIN car ON b.car_id = car.car_id
             WHERE b.status='Pending'
             ORDER BY b.start_date ASC
-        """)
-        return [dict(row) for row in self.cursor.fetchall()]
+        """, fetchall=True)
+        return self._rows_to_dicts(rows)
 
-    def add_booking(self, customer_id, car_id, start_date, end_date, status='Pending'):
-        """Admin adds a booking manually."""
-        self.cursor.execute("""
-            INSERT INTO booking (customer_id, car_id, start_date, end_date, status)
-            VALUES (?, ?, ?, ?, ?)
-        """, (customer_id, car_id, start_date, end_date, status))
-        self.conn.commit()
-        return self.cursor.lastrowid
+    def add_booking(self, customer_id, car_id, start_date, end_date, status='Confirmed'):
+        try:
+            cur = self._execute("""
+                INSERT INTO booking (customer_id, car_id, start_date, end_date, status)
+                VALUES (?, ?, ?, ?, ?)
+            """, (customer_id, car_id, start_date, end_date, status), commit=True)
+            booking_id = cur.lastrowid
+            self._execute(
+                "UPDATE car SET availability_status='Unavailable' WHERE car_id=?",
+                (car_id,), commit=True
+            )
+            return True, booking_id
+        except Exception as e:
+            return False, str(e)
 
     def delete_booking(self, booking_id):
-        """Delete a booking."""
-        self.cursor.execute("DELETE FROM booking WHERE booking_id=?", (booking_id,))
-        self.conn.commit()
+        self._execute("DELETE FROM booking WHERE booking_id=?", (booking_id,), commit=True)
 
     def get_available_cars_admin(self, search_query=None):
-        """Admin view of available cars."""
         query = "SELECT * FROM car WHERE availability_status='Available'"
         params = []
-
         if search_query:
             query += " AND (make LIKE ? OR model LIKE ?)"
-            like_query = f"%{search_query}%"
-            params = [like_query, like_query]
+            params = [f"%{search_query}%", f"%{search_query}%"]
+        rows = self._execute(query, params, fetchall=True)
+        return self._rows_to_dicts(rows)
 
-        self.cursor.execute(query, params)
-        return [dict(row) for row in self.cursor.fetchall()]
-
-    def get_recent_bookings(self, limit=5):
-        """Fetch recent bookings with customer name, car name, and status."""
-        self.cursor.execute("""
-            SELECT b.booking_id, c.full_name AS customer, 
-                   car.make || ' ' || car.model AS car, 
-                   b.start_date, b.end_date, b.status AS booking_status
-            FROM booking b
+    def get_recent_bookings(self, limit=10):
+        rows = self._execute("""
+            SELECT 
+                b.booking_id,
+                b.start_date,
+                b.end_date,
+                b.status AS booking_status,
+                c.full_name AS customer_name,
+                ca.make || ' ' || ca.model AS car_name,
+                p.payment_id,
+                p.status AS payment_status,
+                p.amount
+            FROM Booking b
             JOIN customers c ON b.customer_id = c.customer_id
-            JOIN car car ON b.car_id = car.car_id
+            JOIN car ca ON b.car_id = ca.car_id
+            LEFT JOIN Payment p ON b.booking_id = p.booking_id
             ORDER BY b.booking_id DESC
             LIMIT ?
-        """, (limit,))
-        rows = self.cursor.fetchall()
-        return [dict(row) for row in rows]
+        """, (limit,), fetchall=True)
+        return self._rows_to_dicts(rows)
 
     def get_total_revenue(self):
-        self.cursor.execute("SELECT SUM(amount) FROM Payment WHERE status='Paid'")
-        result = self.cursor.fetchone()
-        return result[0] if result[0] is not None else 0
+        result = self._execute("SELECT SUM(amount) FROM Payment WHERE status='Paid'", fetchone=True)
+        return result[0] if result and result[0] else 0
 
     def get_total_cars(self):
-        self.cursor.execute("SELECT COUNT(*) FROM car")
-        result = self.cursor.fetchone()
+        result = self._execute("SELECT COUNT(*) FROM car", fetchone=True)
         return result[0] if result else 0
 
     def get_total_customers(self):
-        self.cursor.execute("SELECT COUNT(*) FROM customers")
-        result = self.cursor.fetchone()
+        result = self._execute("SELECT COUNT(*) FROM customers", fetchone=True)
         return result[0] if result else 0
 
     def get_notifications(self, customer_id):
-        self.cursor.execute("""
+        rows = self._execute("""
             SELECT message, created_at, is_read
             FROM Notifications
             WHERE customer_id=?
             ORDER BY created_at DESC
-        """, (customer_id,))
-        return self.cursor.fetchall()
-    
+        """, (customer_id,), fetchall=True)
+        return self._rows_to_dicts(rows)
+
     def get_customer_bookings_with_fine(self, customer_id):
-        self.cursor.execute('''
+        rows = self._execute("""
             SELECT b.booking_id, c.make || ' ' || c.model AS car_name, 
                    b.total_cost,
                    f.fine_amount
             FROM booking b
             JOIN Car c ON b.car_id = c.car_id
             LEFT JOIN Fines f ON b.booking_id = f.booking_id
-            WHERE b.customer_id = ?
-              AND b.status IN ('Confirmed', 'Completed')
-        ''', (customer_id,))
-        return [dict(row) for row in self.cursor.fetchall()]
+            WHERE b.customer_id = ? AND b.status IN ('Confirmed', 'Completed')
+        """, (customer_id,), fetchall=True)
+        return self._rows_to_dicts(rows)
 
-    def __del__(self):
-        self.conn.close()
+    def get_available_cars(self, search_query=None, start_date=None, end_date=None):
+        query = """
+            SELECT * FROM car
+            WHERE car_id NOT IN (
+                SELECT car_id FROM booking
+                WHERE status IN ('Confirmed', 'Pending')
+                AND (? IS NULL OR start_date <= ? AND end_date >= ?)
+            )
+        """
+        params = [start_date, end_date, end_date]
+        if search_query:
+            query += " AND (make LIKE ? OR model LIKE ?)"
+            params.extend([f"%{search_query}%", f"%{search_query}%"])
+        rows = self._execute(query, params, fetchall=True)
+        return self._rows_to_dicts(rows)
+
+    # ---------------- Admin Booking Stats ----------------
+
+    def get_confirmed_bookings(self):
+        rows = self._execute("""
+            SELECT b.booking_id, c.full_name AS customer_name, 
+                   car.make || ' ' || car.model AS car_name, b.start_date, b.end_date
+            FROM booking b
+            JOIN customers c ON b.customer_id = c.customer_id
+            JOIN car ON b.car_id = car.car_id
+            WHERE b.status='Confirmed'
+        """, fetchall=True)
+        return self._rows_to_dicts(rows)
+
+    def get_completed_bookings(self):
+        rows = self._execute("""
+            SELECT cb.completed_id, c.full_name AS customer_name,
+                   car.make || ' ' || car.model AS car_name,
+                   cb.start_date, cb.end_date, cb.fine_amount
+            FROM CompletedBookings cb
+            JOIN customers c ON cb.customer_id = c.customer_id
+            JOIN car ON cb.car_id = car.car_id
+        """, fetchall=True)
+        return self._rows_to_dicts(rows)
+
+    # ---------------- Customer Favorites ----------------
+
+    def add_favorite_car(self, customer_id, car_id):
+        try:
+            self._execute(
+                "INSERT OR IGNORE INTO FavoriteCars (customer_id, car_id) VALUES (?, ?)",
+                (customer_id, car_id),
+                commit=True
+            )
+            return True, None
+        except Exception as e:
+            return False, str(e)
+
+    def get_car_bookings(self, car_id):
+        rows = self._execute(
+            "SELECT start_date, end_date FROM booking WHERE car_id=?",
+            (car_id,), fetchall=True
+        )
+        return self._rows_to_dicts(rows)
+
+    def return_car(self, booking_id, return_date_str, fine_amount):
+        booking = self._execute(
+            "SELECT * FROM booking WHERE booking_id=?",
+            (booking_id,), fetchone=True
+        )
+        if not booking:
+            return False, "Booking not found"
+
+        self._execute("""
+            INSERT INTO CompletedBookings
+            (booking_id, customer_id, car_id, start_date, end_date, return_date, fine_amount)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        """, (
+            booking['booking_id'], booking['customer_id'], booking['car_id'],
+            booking['start_date'], booking['end_date'], return_date_str, fine_amount
+        ), commit=True)
+
+        self._execute(
+            "DELETE FROM booking WHERE booking_id=?",
+            (booking_id,), commit=True
+        )
+        return True, None
+
+    # ---------------- Dashboard Related Methods ----------------
+
+    def get_total_bookings_for_customer(self, customer_id):
+        result = self._execute(
+            "SELECT COUNT(*) FROM booking WHERE customer_id=?",
+            (customer_id,), fetchone=True
+        )
+        return result[0] if result else 0
+
+    def get_upcoming_rentals_for_customer(self, customer_id):
+        today = datetime.today().date()
+        result = self._execute(
+            "SELECT COUNT(*) FROM booking WHERE customer_id=? AND start_date >= ?",
+            (customer_id, today), fetchone=True
+        )
+        return result[0] if result else 0
+
+    def get_total_favorites_for_customer(self, customer_id):
+        result = self._execute(
+            "SELECT COUNT(*) FROM FavoriteCars WHERE customer_id=?",
+            (customer_id,), fetchone=True
+        )
+        return result[0] if result else 0
+
+    def get_favorite_cars_for_customer(self, customer_id):
+        rows = self._execute("""
+            SELECT c.car_id, c.make, c.model, c.year, c.seats, c.rent_price_per_day
+            FROM FavoriteCars f
+            JOIN car c ON f.car_id = c.car_id
+            WHERE f.customer_id = ?
+            ORDER BY f.created_at DESC
+        """, (customer_id,), fetchall=True)
+        return self._rows_to_dicts(rows)
+
+    def get_available_favorites_for_customer(self, customer_id):
+        rows = self._execute("""
+            SELECT c.*
+            FROM FavoriteCars f
+            JOIN Car c ON c.car_id = f.car_id
+            WHERE f.customer_id=? AND c.availability_status='Available'
+        """, (customer_id,), fetchall=True)
+        return self._rows_to_dicts(rows)

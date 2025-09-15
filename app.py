@@ -1,150 +1,154 @@
-# This page act as a main handler of the system which handle all routes of the user interfaces and send data to the relevant interfaces.
-from flask import Flask, render_template, request, redirect, url_for, flash, session
-import sqlite3
+from flask import Flask, jsonify, render_template, request, redirect, url_for, flash, session, g
 from werkzeug.security import generate_password_hash, check_password_hash
-from flask import g
+from werkzeug.utils import secure_filename
 from datetime import datetime
+import sqlite3, os
+
+# Managers
 from Controllers.car_manager import CarManager
-from database import create_connection
 from Controllers.manage_customer import CustomerManager
 from Controllers.manage_bookings import BookingManager
-from Controllers.manage_payments import Payment
+from Controllers.manage_payments import PaymentManager
 from Controllers.manage_reports import ReportManager
-from Controllers.manage_settings import SettingsManager
-import os
-from werkzeug.utils import secure_filename
-from flask import jsonify
-
-def allowed_file(filename):
-    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
-
+from Controllers.manage_settings import AdminManager
+from database import create_connection
 
 app = Flask(__name__, template_folder="webtemplates")
-app.secret_key = "supersecretkey" 
+app.secret_key = "supersecretkey"
 
-UPLOAD_FOLDER = "static/uploads/payments" # All the payment invoices done by customer is stored in this folder
+UPLOAD_FOLDER = "static/uploads/payments"
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'pdf'}
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+
+# ------------------ Utilities ------------------
+def allowed_file(filename):
+    return '.' in filename and filename.rsplit('.',1)[1].lower() in ALLOWED_EXTENSIONS
 
 def get_db():
     if 'db' not in g:
         g.db = sqlite3.connect("needcar.db")
+        g.db.row_factory = sqlite3.Row
     return g.db
 
+@app.teardown_appcontext
+def close_db(e=None):
+    db = g.pop('db', None)
+    if db: db.close()
 
-# ------------------------- HOME PAGE-------------------------
+# ------------------ Login Decorators ------------------
+def admin_required(func):
+    def wrapper(*args, **kwargs):
+        if 'admin_id' not in session:
+            flash("Admin login required", "warning")
+            return redirect(url_for('login'))
+        return func(*args, **kwargs)
+    wrapper.__name__ = func.__name__
+    return wrapper
+
+def customer_required(func):
+    def wrapper(*args, **kwargs):
+        if 'customer_id' not in session:
+            flash("Customer login required", "warning")
+            return redirect(url_for('login'))
+        return func(*args, **kwargs)
+    wrapper.__name__ = func.__name__
+    return wrapper
+
+# ------------------ Managers ------------------
+car_manager = CarManager()
+customer_manager = CustomerManager()
+booking_manager = BookingManager()
+payment_manager = PaymentManager()
+report_manager = ReportManager()
+customer_booking_manager = BookingManager()
+
+# ------------------ AUTH ------------------
 @app.route('/')
-def homepage():
-    return render_template('homepage.html')
+def homepage(): return render_template('homepage.html')
 
-
-# ------------------------- REGISTER A NEW CUSTOMER -------------------------
-@app.route('/register', methods=['GET', 'POST'])
+@app.route('/register', methods=['GET','POST'])
 def customer_register():
-    if request.method == 'POST':
-        full_name = request.form['fullname']  
+    if request.method=='POST':
+        fullname = request.form['fullname']
         email = request.form['email']
         phone = request.form['phone']
         address = request.form['address']
-        license_number = request.form['license']  
-        password = request.form['password']
-
-        password_hash = generate_password_hash(password)
-
-        conn = create_connection()
-        cursor = conn.cursor()
-
+        license_no = request.form['license']
+        password = generate_password_hash(request.form['password'])
         try:
-            cursor.execute(
-                "INSERT INTO customers (full_name, email, phone, address, license_number, password_hash) VALUES (?, ?, ?, ?, ?, ?)",
-                (full_name, email, phone, address, license_number, password_hash)
-            )
-            conn.commit()
-            flash("Registration successful! Please log in.", "success")
+            with create_connection() as conn:
+                conn.execute(
+                    "INSERT INTO customers (full_name,email,phone,address,license_number,password_hash) VALUES (?,?,?,?,?,?)",
+                    (fullname,email,phone,address,license_no,password)
+                )
+            flash("Registration successful! Login now.", "success")
             return redirect(url_for('login'))
         except sqlite3.IntegrityError:
-            flash("Email already registered. Try logging in.", "danger")
-        finally:
-            conn.close()
-
+            flash("Email already exists!", "danger")
     return render_template('RegisterUser.html')
 
-
-# ------------------------- USER LOGIN MANAGEMENT -------------------------
-@app.route('/login', methods=['GET', 'POST'])
+@app.route('/login', methods=['GET','POST'])
 def login():
-    if request.method == 'POST':
+    if request.method=='POST':
         email = request.form['email']
         password = request.form['password']
-        role = request.form['role']  
-
-        conn = create_connection()
-        cursor = conn.cursor()
-
-        if role == 'customer':
-            cursor.execute("SELECT * FROM customers WHERE email = ?", (email,))
-            user = cursor.fetchone()
-            conn.close()
-
-            if user and check_password_hash(user["password_hash"], password):
-                session['customer_id'] = user["customer_id"]
-                session['customer_name'] = user["full_name"]
-                flash(f"Welcome back, {user['full_name']}!", "success")
-                return redirect(url_for('customer_dashboard'))
-            else:
-                flash("Invalid customer email or password.", "danger")
-
-        elif role == 'admin':
-            cursor.execute("SELECT * FROM Admin WHERE email = ?", (email,))
-            user = cursor.fetchone()
-            conn.close()
-
-            if user and check_password_hash(user["password_hash"], password):
-                session['admin_id'] = user["admin_id"]
-                session['admin_name'] = user["full_name"]
-                flash(f"Welcome, Admin {user['full_name']}!", "success")
-                return redirect(url_for('admin_dashboard'))
-            else:
-                flash("Invalid admin email or password.", "danger")
-
+        role = request.form['role']
+        with create_connection() as conn:
+            cursor = conn.cursor()
+            if role=='customer':
+                cursor.execute("SELECT * FROM customers WHERE email=?",(email,))
+                user = cursor.fetchone()
+                if user and check_password_hash(user['password_hash'],password):
+                    session['customer_id'] = user['customer_id']
+                    session['customer_name'] = user['full_name']
+                    flash(f"Welcome {user['full_name']}", "success")
+                    return redirect(url_for('customer_dashboard'))
+                flash("Invalid credentials", "danger")
+            elif role=='admin':
+                cursor.execute("SELECT * FROM Admin WHERE email=?",(email,))
+                user = cursor.fetchone()
+                if user and check_password_hash(user['password_hash'],password):
+                    session['admin_id'] = user['admin_id']
+                    session['admin_name'] = user['full_name']
+                    flash(f"Welcome Admin {user['full_name']}", "success")
+                    return redirect(url_for('admin_dashboard'))
+                flash("Invalid admin credentials", "danger")
     return render_template('login.html')
+
+@app.route('/logout')
+def logout():
+    session.clear()
+    flash("Logged out successfully", "info")
+    return redirect(url_for('login'))
+
+
 
 # ------------------------- ADMIN PROFILE -------------------------
 @app.route('/admin/settings', methods=['GET', 'POST'])
+@admin_required
 def admin_profile():
-    # Ensure admin is logged in
-    if 'admin_id' not in session:
-        return redirect(url_for('login'))
-
+    admin_manager = AdminManager()
     admin_id = session['admin_id']
-    conn = create_connection()
-    cursor = conn.cursor()
 
     if request.method == 'POST':
         full_name = request.form.get('full_name')
         email = request.form.get('email')
 
         if full_name and email:
-            cursor.execute("""
-                UPDATE Admin SET full_name=?, email=? WHERE admin_id=?
-            """, (full_name, email, admin_id))
-            conn.commit()
+            admin_manager.update_profile(admin_id, full_name, email)
             flash("Profile updated successfully.", "success")
         else:
             flash("Full name and email cannot be empty.", "danger")
 
-    cursor.execute("SELECT * FROM Admin WHERE admin_id=?", (admin_id,))
-    admin = cursor.fetchone()
-    conn.close()
-
+    admin = admin_manager.get_admin_by_id(admin_id)
     return render_template('admin/settings.html', admin=admin)
 
 @app.route('/admin/change_password', methods=['POST'])
+@admin_required
 def change_admin_password():
-    if 'admin_id' not in session:
-        return redirect(url_for('login'))
-
+    admin_manager = AdminManager()
     admin_id = session['admin_id']
+
     new_password = request.form.get('new_password')
     confirm_password = request.form.get('confirm_password')
 
@@ -156,92 +160,30 @@ def change_admin_password():
         flash("Passwords do not match.", "danger")
         return redirect(url_for('admin_profile'))
 
-    hashed_password = generate_password_hash(new_password)
-
-    conn = create_connection()
-    cursor = conn.cursor()
-    cursor.execute("UPDATE Admin SET password_hash=? WHERE admin_id=?", (hashed_password, admin_id))
-    conn.commit()
-    conn.close()
-
+    admin_manager.change_password(admin_id, new_password)
     flash("Password changed successfully.", "success")
     return redirect(url_for('admin_profile'))
 
 #-------------------------- END ADMIN PROFILE ------------------------ 
 # ------------------------- ADMIN DASHBOARD -------------------------
-manager = BookingManager()
 @app.route('/admin/dashboard')
 def admin_dashboard():
     if 'admin_id' not in session:
         flash("Admin login required.", "warning")
         return redirect(url_for('login'))
-    
-    total_cars = manager.get_total_cars()
-    total_customers = manager.get_total_customers()
-    total_bookings = len(manager.get_all_bookings())
-    recent_bookings = manager.get_recent_bookings(limit=5)
 
-    payment_manager = Payment()
+    booking_manager = BookingManager()
+    payment_manager = PaymentManager()
+
+    # Fetch stats
+    total_cars = booking_manager.get_total_cars()
+    total_customers = booking_manager.get_total_customers()
+    total_bookings = len(booking_manager.get_all_bookings())
     total_revenue = payment_manager.get_total_confirmed_revenue()
 
-    # SHOW RECENT PAYMENTS
-    conn = create_connection()
-    cursor = conn.cursor()
-    cursor.execute("""
-        SELECT p.payment_id, p.booking_id, p.amount, p.payment_date, p.status,
-               c.make || ' ' || c.model AS car_name
-        FROM Payment p
-        JOIN Booking b ON p.booking_id = b.booking_id
-        JOIN car c ON b.car_id = c.car_id
-        ORDER BY p.payment_date DESC
-        LIMIT 7
-    """)
-    recent_payments = cursor.fetchall()
-    conn.close()
-
-    conn = create_connection()
-    conn.row_factory = sqlite3.Row
-    cursor = conn.cursor()
-
-    # DATA FOR STAT CARDS
-    cursor.execute("""
-        SELECT 
-            (SELECT COUNT(*) FROM car) AS total_cars,
-            (SELECT COUNT(*) FROM customers) AS total_customers,
-            (SELECT COUNT(*) FROM Booking) AS total_bookings,
-            (SELECT SUM(amount) FROM Payment WHERE status='Paid') AS total_revenue
-    """)
-    stats = cursor.fetchone()
-    total_cars = stats["total_cars"] or 0
-    total_customers = stats["total_customers"] or 0
-    total_bookings = stats["total_bookings"] or 0
-    total_revenue = stats["total_revenue"] or 0.0
-
-    # SHOW RECENT BOOKINGS
-    cursor.execute("""
-        SELECT 
-            b.booking_id,
-            b.start_date,
-            b.end_date,
-            b.status AS booking_status,
-            c.full_name AS customer_name,
-            ca.make || ' ' || ca.model AS car_name,
-            p.payment_id,
-            p.status AS payment_status,
-            p.amount
-        FROM Booking b
-        JOIN customers c ON b.customer_id = c.customer_id
-        JOIN car ca ON b.car_id = ca.car_id
-        LEFT JOIN Payment p ON b.booking_id = p.booking_id
-        ORDER BY b.booking_id DESC
-        LIMIT 10
-    """)
-    rows = cursor.fetchall()
-    bookings = [dict(row) for row in rows]
-
-    print(f"DEBUG: {len(bookings)} recent bookings fetched for admin dashboard")
-
-    conn.close()
+    # Recent bookings and payments
+    recent_bookings = booking_manager.get_recent_bookings(limit=10)
+    recent_payments = payment_manager.get_recent_payments(limit=7)
 
     return render_template(
         'admin/admin_dashboard.html',
@@ -251,28 +193,8 @@ def admin_dashboard():
         total_bookings=total_bookings,
         total_revenue=total_revenue,
         bookings=recent_bookings,
-        recent_payments=recent_payments)
-
-@app.route('/admin/payments/update/<int:payment_id>', methods=['POST'])
-def update_payment_dashboard(payment_id):
-    if 'admin_id' not in session:
-        flash("Admin login required.", "warning")
-        return redirect(url_for('login'))
-    status = request.form['status']
-    payment_manager = Payment()
-    payment_manager.update_payment_status(payment_id, status)
-    flash(f"Payment #{payment_id} updated successfully.", "success")
-    return redirect(url_for('admin_dashboard'))
-
-@app.route('/admin/payments/delete/<int:payment_id>')
-def delete_payment_dashboard(payment_id):
-    if 'admin_id' not in session:
-        flash("Admin login required.", "warning")
-        return redirect(url_for('login'))
-    payment_manager = Payment()
-    payment_manager.delete_payment(payment_id)
-    flash(f"Payment #{payment_id} deleted successfully.", "success")
-    return redirect(url_for('admin_dashboard'))
+        recent_payments=recent_payments
+    )
 
 # ------------------------- END ADMIN DASHBOARD -------------------------
 #---------------------- CAR DETAILS MANAGEMENT -------------------------
@@ -366,34 +288,34 @@ def add_customer():
 # EDIT CUSTOMER ---------------------
 
 @app.route('/admin/edit_customer/<int:customer_id>', methods=['POST'])
+@admin_required
 def edit_customer(customer_id):
+    customer_manager = CustomerManager()
+
     full_name = request.form['full_name']
     email = request.form['email']
     phone = request.form['phone']
     address = request.form['address']
     license_number = request.form['license_number']
 
-    try:
-        conn = create_connection()
-        cursor = conn.cursor()
-        cursor.execute('''
-            UPDATE customers 
-            SET full_name=?, email=?, phone=?, address=?, license_number=?
-            WHERE customer_id=?
-        ''', (full_name, email, phone, address, license_number, customer_id))
-        conn.commit()
-        conn.close()
+    success, error = customer_manager.update_customer(
+        customer_id, full_name, email, phone, address, license_number
+    )
+
+    if success:
         flash("Customer updated successfully!", "success")
-    except sqlite3.IntegrityError:
-        flash("Email already exists. Please use a different one.", "danger")
-    except Exception as e:
-        flash(f" Error updating customer: {e}","danger")
-    return redirect(url_for('manage_customers',edit_id=customer_id))
+    else:
+        flash(f"Error updating customer: {error}", "danger")
+
+    return redirect(url_for('manage_customers', edit_id=customer_id))
+
 
 # DELETE CUSTOMER ---------------------
 
 @app.route('/admin/delete_customer/<int:customer_id>', methods=['POST'])
+@admin_required
 def delete_customer(customer_id):
+    customer_manager = CustomerManager()
     customer_manager.delete_customer(customer_id)
     flash("Customer deleted successfully!", "success")
     return redirect(url_for('manage_customers'))
@@ -406,50 +328,33 @@ booking_manager = BookingManager()
 
 # HANDLE BOOKINGS OF EACH CUSTOMER ---------------------
 @app.route('/customer/bookings', methods=['GET'])
+@customer_required
 def customer_bookings():
-    if "customer_id" not in session:
-        return redirect(url_for("login"))
-
     customer_id = session["customer_id"]
+    booking_manager = BookingManager()
 
-    conn = create_connection()
-    cursor = conn.cursor()
+    # Get customer bookings
+    booked_cars = booking_manager.get_customer_bookings(customer_id)
 
-    # Get all bookings for this customer including Pending
-    cursor.execute("""
-        SELECT b.booking_id, c.make || ' ' || c.model AS car_name,
-               b.start_date, b.end_date, b.status
-        FROM Booking b
-        JOIN car c ON b.car_id = c.car_id
-        WHERE b.customer_id = ? AND b.status IN ('Confirmed', 'Pending')
-        ORDER BY 
-            CASE b.status
-                WHEN 'Pending' THEN 1
-                WHEN 'Confirmed' THEN 2
-                ELSE 3
-            END,
-            b.start_date DESC
-    """, (customer_id,))
-    booked_cars = cursor.fetchall()
-
-    conn.close()
-
+    # Search and date filters
     search_query = request.args.get('q')
     start_date = request.args.get('start_date')
     end_date = request.args.get('end_date')
 
+    # Get available cars using singleton manager method
     available_cars = booking_manager.get_available_cars(
         search_query=search_query,
         start_date=start_date,
         end_date=end_date
     )
-    
-    booked_cars = booking_manager.get_customer_bookings(customer_id)
+
     return render_template(
         'customer/customer_bookings.html',
         available_cars=available_cars,
         booked_cars=booked_cars
     )
+
+
 
 # MAKE A BOOKING ---------------------
 @app.route('/customer/book_car', methods=['POST'])
@@ -490,43 +395,25 @@ def book_car():
 # ADD CUSTOMER FAVOURIE CARS ---------------------
 
 @app.route("/customer/add_favorite", methods=["POST"])
+@customer_required
 def add_favorite():
-    if "customer_id" not in session:
-        return redirect(url_for("login"))
-
     customer_id = session["customer_id"]
     car_id = request.form.get("car_id")
+    booking_manager = BookingManager()
 
-    conn = create_connection()
-    cursor = conn.cursor()
-
-    try:
-        cursor.execute(
-            "INSERT OR IGNORE INTO FavoriteCars (customer_id, car_id) VALUES (?, ?)",
-            (customer_id, car_id)
-        )
-        conn.commit()
+    success, error = booking_manager.add_favorite_car(customer_id, car_id)
+    if success:
         flash("Car added to favorites!", "success")
-    except Exception as e:
-        flash(f"Error adding favorite: {str(e)}", "danger")
-    finally:
-        conn.close()
-
+    else:
+        flash(f"Error adding favorite: {error}", "danger")
     return redirect(request.referrer or url_for("customer_bookings"))
 
 #GET ALL THE BOOKINGS OF EACH CAR ------------------------
 
 @app.route('/api/car/<int:car_id>/bookings')
 def get_car_bookings(car_id):
-    conn = create_connection()
-    cursor = conn.cursor()
-    cursor.execute("""
-        SELECT start_date, end_date
-        FROM booking
-        WHERE car_id = ?
-    """, (car_id,))
-    bookings = cursor.fetchall()
-    conn.close()
+    booking_manager = BookingManager()
+    bookings = booking_manager.get_car_bookings(car_id)
 
     events = []
     for b in bookings:
@@ -534,7 +421,7 @@ def get_car_bookings(car_id):
             "title": "Booked",
             "start": b["start_date"],
             "end": b["end_date"],
-            "display": "background", 
+            "display": "background",
             "color": "#f1b2b2"
         })
     return jsonify(events)
@@ -542,127 +429,69 @@ def get_car_bookings(car_id):
 #MAINTAIN CAR AVAILABILITY IN A CALENDAR ------------------------
 
 @app.route('/customer/car_calendar')
+@customer_required
 def car_calendar():
-    conn = create_connection()
-    cursor = conn.cursor()
-    cursor.execute("SELECT car_id, make, model FROM Car")
-    cars = cursor.fetchall()
-    conn.close()
+    car_manager = CarManager()
+    cars = car_manager.get_all_cars()
     return render_template('customer/car_calendar.html', cars=cars)
 
 #COST ESTIMATOR AND CAR COMPARISON TOOL-------------------------
 @app.route('/customer/tools')
+@customer_required
 def customer_tools():
-    if 'customer_id' not in session:
-        return redirect(url_for('login'))
-
-    conn = create_connection()
-    cursor = conn.cursor()
-    cursor.execute("""
-        SELECT car_id, make, model, rent_price_per_day, seats,availability_status
-        FROM car
-    """)
-    cars = cursor.fetchall()
-    conn.close()
-
+    car_manager = CarManager()
+    cars = car_manager.get_all_cars()
     return render_template('customer/tools.html', cars=cars)
 
 #GET THE DETAILS OF RETURENED CARS AND APPLY FINES
 
 @app.route('/return_car/<int:booking_id>', methods=['POST'])
+@admin_required
 def return_car(booking_id):
-    conn = create_connection()
-    cursor = conn.cursor()
-
-    # Get return date & fine from form
+    booking_manager = BookingManager()
     return_date_str = request.form['return_date']
     fine_amount = float(request.form['fine_amount'])
 
-    return_date = datetime.strptime(return_date_str, "%Y-%m-%d").date()
-
-    try:
-        # Get booking info
-        cursor.execute("SELECT * FROM booking WHERE booking_id = ?", (booking_id,))
-        booking = cursor.fetchone()
-        if not booking:
-            flash("Booking not found!", "danger")
-            return redirect(url_for('admin_manage_bookings'))
-
-        # Insert into CompletedBookings table
-        cursor.execute("""
-            INSERT INTO CompletedBookings (booking_id, customer_id, car_id, start_date, end_date, return_date, fine_amount)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
-        """, (booking['booking_id'], booking['customer_id'], booking['car_id'], 
-              booking['start_date'], booking['end_date'], return_date_str, fine_amount))
-
-        # Remove from Booking table
-        cursor.execute("DELETE FROM Booking WHERE booking_id = ?", (booking_id,))
-        conn.commit()
-
+    success, error = booking_manager.return_car(booking_id, return_date_str, fine_amount)
+    if success:
         flash(f"Car returned successfully! Fine: ${fine_amount}", "success")
-
-    except Exception as e:
-        flash(f"Error returning car: {str(e)}", "danger")
-    finally:
-        conn.close()
+    else:
+        flash(f"Error returning car: {error}", "danger")
 
     return redirect(url_for('admin_manage_bookings'))
 
 #INSERT NEW BOOKING FROM ADMIN VIEW------------------------
 @app.route('/admin/add_booking', methods=['POST'])
+@admin_required
 def add_booking():
-    conn = create_connection()
-    cursor = conn.cursor()
+    booking_manager = BookingManager()
 
     customer_id = request.form['customer_id']
     car_id = request.form['car_id']
     start_date = request.form['start_date']
     end_date = request.form['end_date']
 
-    try:
-        cursor.execute("""
-            INSERT INTO booking (customer_id, car_id, start_date, end_date, status)
-            VALUES (?, ?, ?, ?, 'Confirmed')
-        """, (customer_id, car_id, start_date, end_date))
-        conn.commit()
+    success, error = booking_manager.add_booking(customer_id, car_id, start_date, end_date)
+    if success:
         flash("Booking added successfully!", "success")
-    except Exception as e:
-        flash(f"Error adding booking: {str(e)}", "danger")
-    finally:
-        conn.close()
+    else:
+        flash(f"Error adding booking: {error}", "danger")
 
     return redirect(url_for('admin_manage_bookings'))
+
 
 # ---------------- Admin Routes ----------------
 
 @app.route('/admin/manage_bookings', methods=['GET'])
+@admin_required
 def admin_manage_bookings():
-    conn = create_connection()
-    cursor = conn.cursor()
+    booking_manager = BookingManager()
+    car_manager = CarManager()
 
-    # Pending requests
-    cursor.execute("SELECT b.booking_id, c.full_name AS customer_name, car.make || ' ' || car.model AS car_name, b.start_date, b.end_date "
-                   "FROM booking b JOIN customers c ON b.customer_id = c.customer_id "
-                   "JOIN car ON b.car_id = car.car_id WHERE b.status = 'Pending'")
-    pending_requests = cursor.fetchall()
-
-    # Confirmed bookings
-    cursor.execute("SELECT b.booking_id, c.full_name AS customer_name, car.make || ' ' || car.model AS car_name, b.start_date, b.end_date "
-                   "FROM booking b JOIN customers c ON b.customer_id = c.customer_id "
-                   "JOIN car ON b.car_id = car.car_id WHERE b.status = 'Confirmed'")
-    confirmed_bookings = cursor.fetchall()
-
-    # Completed bookings & fines
-    cursor.execute("SELECT cb.completed_id, c.full_name AS customer_name, car.make || ' ' || car.model AS car_name, cb.start_date, cb.end_date, cb.fine_amount "
-                   "FROM CompletedBookings cb JOIN customers c ON cb.customer_id = c.customer_id "
-                   "JOIN car ON cb.car_id = car.car_id")
-    completed_bookings = cursor.fetchall()
-
-    # Available cars
-    cursor.execute("SELECT * FROM car WHERE availability_status = 'Available'")
-    available_cars = cursor.fetchall()
-
-    conn.close()
+    pending_requests = booking_manager.get_pending_bookings()
+    confirmed_bookings = booking_manager.get_confirmed_bookings()
+    completed_bookings = booking_manager.get_completed_bookings()
+    available_cars = car_manager.get_available_cars()
 
     return render_template(
         'admin/manage_bookings.html',
@@ -670,8 +499,8 @@ def admin_manage_bookings():
         available_cars=available_cars,
         confirmed_bookings=confirmed_bookings, 
         completed_bookings=completed_bookings,
-                        
     )
+
 
 @app.route('/admin/update_booking/<int:booking_id>', methods=['POST'])
 def update_booking(booking_id):
@@ -700,7 +529,7 @@ def delete_booking(booking_id):
 @app.route('/admin/payments')
 def payments():
     search_query = request.args.get('q', '')
-    payment_manager = Payment()
+    payment_manager = PaymentManager()
     payments = payment_manager.get_all_payments(search_query)
     return render_template('/admin/payments.html', payments=payments)
 
@@ -709,7 +538,7 @@ def payments():
 @app.route('/admin/payments/update/<int:payment_id>', methods=['POST'])
 def update_payment(payment_id):
     status = request.form['status']
-    payment_manager = Payment()
+    payment_manager = PaymentManager()
     payment_manager.update_payment_status(payment_id, status)
     return redirect(url_for('payments'))
 
@@ -717,7 +546,7 @@ def update_payment(payment_id):
 
 @app.route('/admin/payments/delete/<int:payment_id>')
 def delete_payment(payment_id):
-    payment_manager = Payment()
+    payment_manager = PaymentManager()
     payment_manager.delete_payment(payment_id)
     return redirect(url_for('payments'))
 
@@ -726,89 +555,27 @@ def delete_payment(payment_id):
 #------------------REPORT MANAGEMENT ------------------------------
 
 @app.route('/admin/reports')
+@admin_required
 def reports():
-    conn = create_connection()
-    cursor = conn.cursor()
+    
 
-    # -------------------- Total counts --------------------
-    cursor.execute("SELECT COUNT(*) AS total FROM car")
-    total_cars = cursor.fetchone()['total']
+    # -------------------- Totals --------------------
+    total_cars = report_manager.get_total_cars()
+    total_customers = report_manager.get_total_customers()
+    total_bookings = report_manager.get_total_bookings()
+    total_revenue = report_manager.get_total_revenue()
 
-    cursor.execute("SELECT COUNT(*) AS total FROM customers")
-    total_customers = cursor.fetchone()['total']
-
-    cursor.execute("SELECT COUNT(*) AS total FROM booking")
-    total_bookings = cursor.fetchone()['total']
-
-    cursor.execute("SELECT IFNULL(SUM(amount), 0) AS total FROM Payment WHERE status='Paid'")
-    total_revenue = cursor.fetchone()['total']
-
-    # -------------------- Filters --------------------
+    # -------------------- Date Filters --------------------
     from_date = request.args.get('from_date')
     to_date = request.args.get('to_date')
 
-    bookings_query = """
-        SELECT b.booking_id, c.full_name AS customer, car.make || ' ' || car.model AS car_name,
-               b.start_date, b.end_date, b.status
-        FROM booking b
-        JOIN customers c ON b.customer_id = c.customer_id
-        JOIN car ON b.car_id = car.car_id
-    """
-
-    payments_query = """
-        SELECT p.payment_id, c.full_name AS customer, p.amount, p.payment_date, p.status
-        FROM Payment p
-        JOIN booking b ON p.booking_id = b.booking_id
-        JOIN customers c ON b.customer_id = c.customer_id
-    """
-
-    params = ()
-    if from_date and to_date:
-        bookings_query += " WHERE b.start_date BETWEEN ? AND ?"
-        payments_query += " WHERE p.payment_date BETWEEN ? AND ?"
-        params = (from_date, to_date)
-
-    bookings_query += " ORDER BY b.start_date DESC"
-    payments_query += " ORDER BY p.payment_date DESC"
-
-    cursor.execute(bookings_query, params)
-    bookings_report = cursor.fetchall()
-
-    cursor.execute(payments_query, params)
-    payments_report = cursor.fetchall()
+    bookings_report = report_manager.get_bookings_report(from_date, to_date)
+    payments_report = report_manager.get_payments_report(from_date, to_date)
 
     # -------------------- Revenue Breakdown --------------------
-    # DAILY REVENUE-----------------------
-    cursor.execute("""
-        SELECT date(payment_date) AS day, IFNULL(SUM(amount),0) AS total
-        FROM Payment
-        WHERE status='Paid'
-        GROUP BY day
-        ORDER BY day ASC
-    """)
-    daily_revenue = cursor.fetchall()
-
-    # WEEKLY REVENUE ---------------------------
-    cursor.execute("""
-        SELECT strftime('%Y-%W', payment_date) AS week, IFNULL(SUM(amount),0) AS total
-        FROM Payment
-        WHERE status='Paid'
-        GROUP BY week
-        ORDER BY week ASC
-    """)
-    weekly_revenue = cursor.fetchall()
-
-    # MONTHLY REVENUE --------------------------
-    cursor.execute("""
-        SELECT strftime('%Y-%m', payment_date) AS month, IFNULL(SUM(amount),0) AS total
-        FROM Payment
-        WHERE status='Paid'
-        GROUP BY month
-        ORDER BY month ASC
-    """)
-    monthly_revenue = cursor.fetchall()
-
-    conn.close()
+    daily_revenue = report_manager.get_daily_revenue()
+    weekly_revenue = report_manager.get_weekly_revenue()
+    monthly_revenue = report_manager.get_monthly_revenue()
 
     return render_template(
         'admin/reports.html',
@@ -823,66 +590,57 @@ def reports():
         monthly_revenue=monthly_revenue
     )
 
+
 #-----------------------END OF THE PAYEMENT MANAGEMENT --------------------------
 # ------------------------- CUSTOMER DASHBOARD -------------------------
-customer_booking_manager = BookingManager()
+
 @app.route('/customer/dashboard')
 def customer_dashboard():
     if 'customer_id' not in session:
         flash("Please log in first.", "warning")
         return redirect(url_for('login'))
-    customer_id = session.get('customer_id', 1)  
+
+    customer_id = session['customer_id']
     search_query = request.args.get('q', '')
 
+    # ---------------- Customer Info ----------------
     cm = CustomerManager()
     customer = cm.get_customer_by_id(customer_id)
-    customer_id = session["customer_id"]
-    conn = create_connection()
-    cursor = conn.cursor()
-    
-# TOTAL BOOKINGS OF THE CUSTOMER---------------------------------
-    cursor.execute("SELECT COUNT(*) FROM booking WHERE customer_id = ?", (customer_id,))
-    total_bookings = cursor.fetchone()[0]
-    cursor.execute("""
-        SELECT COUNT(*) FROM booking
-        WHERE customer_id = ? AND start_date >= ?
-    """, (customer_id, datetime.today().date()))
-    upcoming_rentals = cursor.fetchone()[0]
-    
-# FAVOURITE CARS OF THE CUSTOMER
-    cursor.execute("SELECT COUNT(*) FROM FavoriteCars WHERE customer_id = ?", (customer_id,))
-    total_favorites = cursor.fetchone()[0]
 
-    cursor.execute("""
-        SELECT c.car_id, c.make, c.model, c.year, c.seats, c.rent_price_per_day
-        FROM FavoriteCars f
-        JOIN car c ON f.car_id = c.car_id
-        WHERE f.customer_id = ?
-        ORDER BY f.created_at DESC
-    """, (customer_id,))
-    favorite_cars = cursor.fetchall()
+    bm = BookingManager()  # Singleton instance
 
-    cursor.execute("""
-        SELECT c.* FROM FavoriteCars f
-        JOIN Car c ON c.car_id = f.car_id
-        WHERE f.customer_id=? AND c.availability_status='Available'
-    """, (customer_id,))
-    favorite_notifications = cursor.fetchall()
+    # ---------------- Customer Stats ----------------
+    total_bookings = bm.get_total_bookings_for_customer(customer_id)
+    upcoming_rentals = bm.get_upcoming_rentals_for_customer(customer_id)
+    total_favorites = bm.get_total_favorites_for_customer(customer_id)
 
-    conn.close()
+    # ---------------- Favorite Cars ----------------
+    favorite_cars = bm.get_favorite_cars_for_customer(customer_id)
+    favorite_notifications = bm.get_available_favorites_for_customer(customer_id)
+
+    # ---------------- Available Cars & Bookings ----------------
+    available_cars = bm.get_available_cars(search_query)
+    bookings = bm.get_booking_history(customer_id)
+    notifications = bm.get_notifications(customer_id)
+
+    return render_template(
+        '/customer/dashboard.html',
+        name=session['customer_name'],
+        customer=customer,
+        available_cars=available_cars,
+        bookings=bookings,
+        notifications=notifications,
+        total_bookings=total_bookings,
+        upcoming_rentals=upcoming_rentals,
+        total_favorites=total_favorites,
+        favorite_cars=favorite_cars,
+        favorite_notifications=favorite_notifications
+    )
 
 
-    cars = BookingManager().get_available_cars(search_query)
-    bookings = BookingManager().get_booking_history(customer_id)
-    notifications = BookingManager().get_notifications(customer_id)
-    return render_template('/customer/dashboard.html', name=session['customer_name'],customer=customer,available_cars=cars,bookings=bookings,notifications=notifications,total_bookings=total_bookings,
-        favorite_cars = favorite_cars ,upcoming_rentals=upcoming_rentals,total_favorites =total_favorites,favorite_notifications=favorite_notifications)
-
-#------------------- END OF THE CUSTOMER DASHBOARD -----------------------------
 #------------------------ MANAGE CUSTOMER PAYMENTS------------------------------
 
-payment_manager = Payment(upload_folder="static/uploads/payments")
-
+payment_manager = PaymentManager(upload_folder="static/uploads/payments")
 
 @app.route('/customer/payments')
 def customer_payments():
@@ -891,40 +649,37 @@ def customer_payments():
 
     customer_id = session['customer_id']
 
+    # ---------------- Customer Payments ----------------
     payments = payment_manager.get_customer_payments(customer_id)
 
-    conn = create_connection()
-    conn.row_factory = sqlite3.Row
-    cursor = conn.cursor()
+    # ---------------- Pending Completed Bookings ----------------
+    completed_bookings = booking_manager.get_completed_bookings_for_customer(customer_id)
+    pending_bookings = []
 
-    #Fetch completed bookings (rent + fine)
-    cursor.execute("""
-        SELECT 
-            CB.booking_id,
-            C.make || ' ' || C.model AS car_name,
-            C.rent_price_per_day,
-            CB.fine_amount,
-            ((julianday(CB.end_date) - julianday(CB.start_date) + 1) * C.rent_price_per_day) AS rent_cost
-        FROM CompletedBookings CB
-        JOIN Car C ON CB.car_id = C.car_id
-        WHERE CB.customer_id=? 
-          AND CB.booking_id NOT IN (SELECT booking_id FROM Payment)
-        ORDER BY CB.start_date ASC
-    """, (customer_id,))
+    for booking in completed_bookings:
+        # Skip if booking already has a paid payment
+        if payment_manager.is_booking_paid(booking['booking_id']):
+            continue
 
-    bookings = []
-    for row in cursor.fetchall():
-        row = dict(row)
-        row['total_cost'] = (row['rent_cost'] or 0) + (row['fine_amount'] or 0)
-        bookings.append(row)
+        rent_days = (datetime.strptime(booking['end_date'], "%Y-%m-%d") - 
+                     datetime.strptime(booking['start_date'], "%Y-%m-%d")).days + 1
+        rent_cost = rent_days * booking.get('rent_price_per_day', 0)
+        total_cost = rent_cost + (booking.get('fine_amount') or 0)
 
-    conn.close()
-    return render_template('customer/customer_payments.html', payments=payments, bookings=bookings)
+        booking_data = dict(booking)
+        booking_data['rent_cost'] = rent_cost
+        booking_data['total_cost'] = total_cost
+        pending_bookings.append(booking_data)
 
+    return render_template(
+        'customer/customer_payments.html',
+        payments=payments,
+        bookings=pending_bookings
+    )
 
 
 # HANDLE CUSTOMER BANK TRANSFER UPLOAD ------------------------------
-payment = Payment()  
+payment = PaymentManager()  
 @app.route('/customer/payments/upload', methods=['POST'])
 def upload_payment():
     if 'customer_id' not in session:
@@ -979,12 +734,6 @@ def change_customer_password():
     return redirect(url_for("customer_profile"))
 #-------------------------END CUSTOMER PROFILE -------------------------------
 
-# ------------------------- LOGOUT FUNCTION------------------------------------
-@app.route('/logout')
-def logout():
-    session.clear()
-    flash("You have been logged out.", "info")
-    return redirect(url_for('login'))
 
 for rule in app.url_map.iter_rules():
     print(rule.endpoint, rule.rule)
