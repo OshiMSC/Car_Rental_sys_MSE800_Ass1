@@ -2,7 +2,8 @@
 from database import create_connection
 
 class CarManager:
-    _instance = None  # Singleton instance holder
+    """Singleton class to manage all car-related database operations."""
+    _instance = None  
 
     def __new__(cls, *args, **kwargs):
         """Ensure only one instance of CarManager exists."""
@@ -13,7 +14,7 @@ class CarManager:
     def __init__(self):
         """Initialize the database connection only once."""
         if not hasattr(self, "_initialized"):
-            self._conn = create_connection()  # Private connection (encapsulation)
+            self._conn = create_connection() 
             self._initialized = True
 
     def _get_cursor(self):

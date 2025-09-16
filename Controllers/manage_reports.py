@@ -3,6 +3,7 @@ import sqlite3
 from database import create_connection
 
 class ReportManager:
+    """Singleton class to manage all report-related database operations."""
     _instance = None
 
     def __new__(cls):

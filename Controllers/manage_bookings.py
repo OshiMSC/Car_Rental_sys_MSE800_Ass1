@@ -219,6 +219,34 @@ class BookingManager:
         """, (customer_id,), fetchall=True)
         return self._rows_to_dicts(rows)
 
+    def get_pending_completed_bookings_for_customer(self, customer_id):
+        """
+        Fetch completed bookings for a customer that do not have a payment yet.
+        Calculates rent_cost and total_cost.
+        """
+        rows = self._execute("""
+            SELECT 
+                CB.booking_id,
+                C.make || ' ' || C.model AS car_name,
+                C.rent_price_per_day,
+                CB.fine_amount,
+                ((julianday(CB.end_date) - julianday(CB.start_date) + 1) * C.rent_price_per_day) AS rent_cost
+            FROM CompletedBookings CB
+            JOIN Car C ON CB.car_id = C.car_id
+            WHERE CB.customer_id=? 
+            AND CB.booking_id NOT IN (SELECT booking_id FROM Payment)
+            ORDER BY CB.start_date ASC
+        """, (customer_id,), fetchall=True)
+
+        bookings = []
+        for row in rows:
+            row = dict(row)
+            row['total_cost'] = (row['rent_cost'] or 0) + (row['fine_amount'] or 0)
+            bookings.append(row)
+
+        return bookings
+
+
     def get_available_cars(self, search_query=None, start_date=None, end_date=None):
         query = """
             SELECT * FROM car

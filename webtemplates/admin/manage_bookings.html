@@ -15,13 +15,22 @@
       <!-- Sidebar -->
       <nav class="col-md-3 col-lg-2 adsidebar">
         <h3 class="text-white text-center mb-4">Admin Panel</h3>
-        <a href="{{ url_for('admin_dashboard') }}" class="{% if request.path == '/admin/dashboard' %}active{% endif %}">Dashboard</a>
-        <a href="{{ url_for('manage_cars') }}" class="{% if request.path == '/admin/manage_cars' %}active{% endif %}">Cars</a>
-        <a href="{{ url_for('manage_customers') }}" class="{% if request.path == '/admin/manage_customers' %}active{% endif %}">Customers</a>
-        <a href="{{ url_for('admin_manage_bookings') }}" class="{% if request.path == '/admin/manage_bookings' %}active{% endif %}">Bookings</a>
-        <a href="{{ url_for('payments') }}" class="{% if request.path == '/admin/payments' %}active{% endif %}">Payments</a>
-        <a href="{{ url_for('reports') }}" class="{% if request.path == '/admin/reports' %}active{% endif %}">Reports</a>
-        <a href="{{ url_for('admin_profile') }}" class="{% if request.path == '/admin/settings' %}active{% endif %}">Settings</a>
+        <a href="{{ url_for('admin_dashboard') }}"
+          class="{% if request.path == '/admin/dashboard' %}active{% endif %}">Dashboard</a>
+        <a href="{{ url_for('manage_cars') }}"
+          class="{% if request.path == '/admin/manage_cars' %}active{% endif %}">Cars</a>
+        <a href="{{ url_for('admin_car_calendar') }}"
+          class="{% if request.path == '/admin/car_calendar' %}active{% endif %}">Car Availability</a>
+        <a href="{{ url_for('manage_customers') }}"
+          class="{% if request.path == '/admin/manage_customers' %}active{% endif %}">Customers</a>
+        <a href="{{ url_for('admin_manage_bookings') }}"
+          class="{% if request.path == '/admin/manage_bookings' %}active{% endif %}">Bookings</a>
+        <a href="{{ url_for('payments') }}"
+          class="{% if request.path == '/admin/payments' %}active{% endif %}">Payments</a>
+        <a href="{{ url_for('reports') }}"
+          class="{% if request.path == '/admin/reports' %}active{% endif %}">Reports</a>
+        <a href="{{ url_for('admin_profile') }}"
+          class="{% if request.path == '/admin/settings' %}active{% endif %}">Settings</a>
         <a href="{{ url_for('logout') }}" class="text-danger">Logout</a>
       </nav>
 
@@ -60,11 +69,13 @@
                 <td>{{ booking.start_date }}</td>
                 <td>{{ booking.end_date }}</td>
                 <td>
-                  <form action="{{ url_for('update_booking', booking_id=booking.booking_id) }}" method="POST" class="d-inline">
+                  <form action="{{ url_for('update_booking', booking_id=booking.booking_id) }}" method="POST"
+                    class="d-inline">
                     <input type="hidden" name="status" value="Confirmed">
                     <button type="submit" class="btn btn-success btn-sm">Approve</button>
                   </form>
-                  <form action="{{ url_for('update_booking', booking_id=booking.booking_id) }}" method="POST" class="d-inline">
+                  <form action="{{ url_for('update_booking', booking_id=booking.booking_id) }}" method="POST"
+                    class="d-inline">
                     <input type="hidden" name="status" value="Cancelled">
                     <button type="submit" class="btn btn-danger btn-sm">Reject</button>
                   </form>
@@ -103,8 +114,10 @@
                 <td>{{ booking.start_date }}</td>
                 <td>{{ booking.end_date }}</td>
                 <td>
-                  <form action="{{ url_for('return_car', booking_id=booking.booking_id) }}" method="POST" class="d-flex gap-1">
-                    <input type="date" name="return_date" class="form-control form-control-sm return-date" data-end="{{ booking.end_date }}" required>
+                  <form action="{{ url_for('return_car', booking_id=booking.booking_id) }}" method="POST"
+                    class="d-flex gap-1">
+                    <input type="date" name="return_date" class="form-control form-control-sm return-date"
+                      data-end="{{ booking.end_date }}" required>
                     <input type="hidden" name="fine_amount" class="fine-input" value="0">
                     <button type="submit" class="btn btn-warning btn-sm">Return</button>
                   </form>
@@ -228,4 +241,5 @@
     });
   </script>
 </body>
+
 </html>

@@ -4,7 +4,8 @@ from werkzeug.security import generate_password_hash
 import sqlite3
 
 class CustomerManager:
-    _instance = None   # Singleton instance
+    """Singleton class to manage all customer-related database operations."""
+    _instance = None   
 
     def __new__(cls):
         if cls._instance is None:
