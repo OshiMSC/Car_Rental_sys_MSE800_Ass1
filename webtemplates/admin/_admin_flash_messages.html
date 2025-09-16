@@ -11,20 +11,19 @@
 {% endwith %}
 
 <script>
-  // Auto-hide admin flash messages after 5 seconds
+  // Auto-hide admin flash messages after 1 minute
   document.addEventListener('DOMContentLoaded', () => {
     const flashMessages = document.querySelectorAll('.admin-flash-message');
     flashMessages.forEach(msg => {
       setTimeout(() => {
         const bsAlert = bootstrap.Alert.getOrCreateInstance(msg);
         bsAlert.close();
-      }, 5000); // 5 seconds
+      }, 60000); // 1 minute
     });
   });
 </script>
 
 <style>
-  /* Optional: Slightly different style for admin messages */
   .admin-flash-message {
     font-weight: 500;
   }

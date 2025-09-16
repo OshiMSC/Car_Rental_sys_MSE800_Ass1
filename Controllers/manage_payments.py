@@ -7,6 +7,7 @@ from werkzeug.utils import secure_filename
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'pdf'}
 
 class PaymentManager:
+    """Singleton class to manage all payment-related database operations."""
     _instance = None
 
     def __new__(cls, upload_folder="static/uploads/payments"):

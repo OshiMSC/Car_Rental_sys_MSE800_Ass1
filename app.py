@@ -1,3 +1,4 @@
+#Main file which manages all routes and connections between UI,Controllers and Database
 from flask import Flask, jsonify, render_template, request, redirect, url_for, flash, session, g
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
@@ -60,9 +61,10 @@ customer_manager = CustomerManager()
 booking_manager = BookingManager()
 payment_manager = PaymentManager()
 report_manager = ReportManager()
+admin_manager = AdminManager()
 customer_booking_manager = BookingManager()
 
-# ------------------ AUTH ------------------
+# ------------------ User Registration and Login  ------------------
 @app.route('/')
 def homepage(): return render_template('homepage.html')
 
@@ -127,7 +129,6 @@ def logout():
 @app.route('/admin/settings', methods=['GET', 'POST'])
 @admin_required
 def admin_profile():
-    admin_manager = AdminManager()
     admin_id = session['admin_id']
 
     if request.method == 'POST':
@@ -146,7 +147,6 @@ def admin_profile():
 @app.route('/admin/change_password', methods=['POST'])
 @admin_required
 def change_admin_password():
-    admin_manager = AdminManager()
     admin_id = session['admin_id']
 
     new_password = request.form.get('new_password')
@@ -172,9 +172,6 @@ def admin_dashboard():
         flash("Admin login required.", "warning")
         return redirect(url_for('login'))
 
-    booking_manager = BookingManager()
-    payment_manager = PaymentManager()
-
     # Fetch stats
     total_cars = booking_manager.get_total_cars()
     total_customers = booking_manager.get_total_customers()
@@ -198,7 +195,6 @@ def admin_dashboard():
 
 # ------------------------- END ADMIN DASHBOARD -------------------------
 #---------------------- CAR DETAILS MANAGEMENT -------------------------
-car_manager = CarManager()
 @app.route('/admin/manage_cars', methods=['GET'])
 def manage_cars():
     search_query = request.args.get('q')
@@ -262,7 +258,6 @@ def delete_car(car_id):
 #---------------------- END OF CAR DETAILS MANAGEMENT -------------------------
 
 #--------------------------------MANAGE CUSTOMER DETAILS ----------------------------
-customer_manager = CustomerManager()
 
 @app.route('/admin/manage_customers', methods=['GET'])
 def manage_customers():
@@ -315,7 +310,6 @@ def edit_customer(customer_id):
 @app.route('/admin/delete_customer/<int:customer_id>', methods=['POST'])
 @admin_required
 def delete_customer(customer_id):
-    customer_manager = CustomerManager()
     customer_manager.delete_customer(customer_id)
     flash("Customer deleted successfully!", "success")
     return redirect(url_for('manage_customers'))
@@ -324,14 +318,12 @@ def delete_customer(customer_id):
 
 #---------------------------------MANAGE BOOKINGS ------------------------
 
-booking_manager = BookingManager()
 
 # HANDLE BOOKINGS OF EACH CUSTOMER ---------------------
 @app.route('/customer/bookings', methods=['GET'])
 @customer_required
 def customer_bookings():
     customer_id = session["customer_id"]
-    booking_manager = BookingManager()
 
     # Get customer bookings
     booked_cars = booking_manager.get_customer_bookings(customer_id)
@@ -353,8 +345,6 @@ def customer_bookings():
         available_cars=available_cars,
         booked_cars=booked_cars
     )
-
-
 
 # MAKE A BOOKING ---------------------
 @app.route('/customer/book_car', methods=['POST'])
@@ -387,7 +377,6 @@ def book_car():
             flash("Sorry, this car is already booked for the selected dates.", "danger")
             return redirect(url_for('customer_bookings'))
 
-   
     booking_id = customer_booking_manager.create_booking(customer_id, car_id, start_date, end_date)
     flash(f"Booking request #{booking_id} submitted successfully!", "success")
     return redirect(url_for('customer_bookings'))
@@ -399,8 +388,6 @@ def book_car():
 def add_favorite():
     customer_id = session["customer_id"]
     car_id = request.form.get("car_id")
-    booking_manager = BookingManager()
-
     success, error = booking_manager.add_favorite_car(customer_id, car_id)
     if success:
         flash("Car added to favorites!", "success")
@@ -412,7 +399,6 @@ def add_favorite():
 
 @app.route('/api/car/<int:car_id>/bookings')
 def get_car_bookings(car_id):
-    booking_manager = BookingManager()
     bookings = booking_manager.get_car_bookings(car_id)
 
     events = []
@@ -431,7 +417,6 @@ def get_car_bookings(car_id):
 @app.route('/customer/car_calendar')
 @customer_required
 def car_calendar():
-    car_manager = CarManager()
     cars = car_manager.get_all_cars()
     return render_template('customer/car_calendar.html', cars=cars)
 
@@ -439,7 +424,6 @@ def car_calendar():
 @app.route('/customer/tools')
 @customer_required
 def customer_tools():
-    car_manager = CarManager()
     cars = car_manager.get_all_cars()
     return render_template('customer/tools.html', cars=cars)
 
@@ -448,7 +432,6 @@ def customer_tools():
 @app.route('/return_car/<int:booking_id>', methods=['POST'])
 @admin_required
 def return_car(booking_id):
-    booking_manager = BookingManager()
     return_date_str = request.form['return_date']
     fine_amount = float(request.form['fine_amount'])
 
@@ -464,7 +447,6 @@ def return_car(booking_id):
 @app.route('/admin/add_booking', methods=['POST'])
 @admin_required
 def add_booking():
-    booking_manager = BookingManager()
 
     customer_id = request.form['customer_id']
     car_id = request.form['car_id']
@@ -485,8 +467,6 @@ def add_booking():
 @app.route('/admin/manage_bookings', methods=['GET'])
 @admin_required
 def admin_manage_bookings():
-    booking_manager = BookingManager()
-    car_manager = CarManager()
 
     pending_requests = booking_manager.get_pending_bookings()
     confirmed_bookings = booking_manager.get_confirmed_bookings()
@@ -521,6 +501,10 @@ def delete_booking(booking_id):
     flash(f"Booking #{booking_id} deleted.", "success")
     return redirect(url_for('manage_bookings'))
 
+@app.route("/admin/car_calendar")
+def admin_car_calendar():
+    cars = CarManager().get_all_cars()  # fetch all cars for dropdown
+    return render_template("admin/car_calendar.html", cars=cars)
 
 
 #---------------END OF BOOKING MANAGEMENT --------------------------
@@ -529,7 +513,6 @@ def delete_booking(booking_id):
 @app.route('/admin/payments')
 def payments():
     search_query = request.args.get('q', '')
-    payment_manager = PaymentManager()
     payments = payment_manager.get_all_payments(search_query)
     return render_template('/admin/payments.html', payments=payments)
 
@@ -538,7 +521,6 @@ def payments():
 @app.route('/admin/payments/update/<int:payment_id>', methods=['POST'])
 def update_payment(payment_id):
     status = request.form['status']
-    payment_manager = PaymentManager()
     payment_manager.update_payment_status(payment_id, status)
     return redirect(url_for('payments'))
 
@@ -546,7 +528,6 @@ def update_payment(payment_id):
 
 @app.route('/admin/payments/delete/<int:payment_id>')
 def delete_payment(payment_id):
-    payment_manager = PaymentManager()
     payment_manager.delete_payment(payment_id)
     return redirect(url_for('payments'))
 
@@ -649,27 +630,11 @@ def customer_payments():
 
     customer_id = session['customer_id']
 
-    # ---------------- Customer Payments ----------------
+    # Get customer payments
     payments = payment_manager.get_customer_payments(customer_id)
 
-    # ---------------- Pending Completed Bookings ----------------
-    completed_bookings = booking_manager.get_completed_bookings_for_customer(customer_id)
-    pending_bookings = []
-
-    for booking in completed_bookings:
-        # Skip if booking already has a paid payment
-        if payment_manager.is_booking_paid(booking['booking_id']):
-            continue
-
-        rent_days = (datetime.strptime(booking['end_date'], "%Y-%m-%d") - 
-                     datetime.strptime(booking['start_date'], "%Y-%m-%d")).days + 1
-        rent_cost = rent_days * booking.get('rent_price_per_day', 0)
-        total_cost = rent_cost + (booking.get('fine_amount') or 0)
-
-        booking_data = dict(booking)
-        booking_data['rent_cost'] = rent_cost
-        booking_data['total_cost'] = total_cost
-        pending_bookings.append(booking_data)
+    # Get completed bookings with costs already calculated
+    pending_bookings = booking_manager.get_pending_completed_bookings_for_customer(customer_id)
 
     return render_template(
         'customer/customer_payments.html',
@@ -679,7 +644,6 @@ def customer_payments():
 
 
 # HANDLE CUSTOMER BANK TRANSFER UPLOAD ------------------------------
-payment = PaymentManager()  
 @app.route('/customer/payments/upload', methods=['POST'])
 def upload_payment():
     if 'customer_id' not in session:
@@ -689,7 +653,7 @@ def upload_payment():
     booking_id = request.form.get('booking_id')
     file = request.files.get('payment_proof')
 
-    success, message = payment.upload_payment(customer_id, booking_id, file)
+    success, message = payment_manager.upload_payment(customer_id, booking_id, file)
     flash(message, "success" if success else "danger")
     return redirect(url_for('customer_payments'))
 

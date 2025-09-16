@@ -53,17 +53,21 @@
               <div class="mb-3">
                 <label for="booking_id" class="form-label">Select Booking</label>
                 <select name="booking_id" id="booking_id" class="form-select" required onchange="updateTotalCost()">
-                  {% for booking in bookings %}
-                  <option value="{{ booking['booking_id'] }}"
-                            data-total="{{ '%.2f'|format(booking['total_cost']) }}"
-                            data-rent="{{ '%.2f'|format(booking['rent_cost']) }}"
-                            data-fine="{{ '%.2f'|format(booking['fine_amount'] if booking['fine_amount'] else 0) }}">
-                      Booking #{{ booking['booking_id'] }} - {{ booking['car_name'] }}
-                      | Rent: ${{ "%.2f"|format(booking['rent_cost']) }}
-                      | Fine: ${{ "%.2f"|format(booking['fine_amount'] if booking['fine_amount'] else 0) }}
-                      | Total: ${{ "%.2f"|format(booking['total_cost']) }}
-                    </option>
-                  {% endfor %}
+                  {% if bookings|length > 0 %}
+                    {% for booking in bookings %}
+                      <option value="{{ booking['booking_id'] }}"
+                              data-total="{{ '%.2f'|format(booking['total_cost']) }}"
+                              data-rent="{{ '%.2f'|format(booking['rent_cost']) }}"
+                              data-fine="{{ '%.2f'|format(booking['fine_amount'] if booking['fine_amount'] else 0) }}">
+                        Booking #{{ booking['booking_id'] }} - {{ booking['car_name'] }}
+                        | Rent: ${{ "%.2f"|format(booking['rent_cost']) }}
+                        | Fine: ${{ "%.2f"|format(booking['fine_amount'] if booking['fine_amount'] else 0) }}
+                        | Total: ${{ "%.2f"|format(booking['total_cost']) }}
+                      </option>
+                    {% endfor %}
+                  {% else %}
+                    <option value="" disabled selected>No pending payments available</option>
+                  {% endif %}
                 </select>
 
                 <!-- Display area for total cost -->
@@ -80,10 +84,12 @@
               <div class="mb-3">
                 <label for="payment_proof" class="form-label">Upload Payment Proof</label>
                 <input type="file" class="form-control" name="payment_proof" id="payment_proof"
-                  accept=".jpg,.jpeg,.png,.pdf" required>
+                      accept=".jpg,.jpeg,.png,.pdf" required>
               </div>
 
-              <button type="submit" class="btn btn-primary">Submit Payment</button>
+              <button type="submit" class="btn btn-primary" {% if bookings|length == 0 %}disabled{% endif %}>
+                Submit Payment
+              </button>
             </form>
 
         <div class="card p-3">

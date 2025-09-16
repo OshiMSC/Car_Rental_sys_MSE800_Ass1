@@ -6,6 +6,7 @@ import sqlite3
 from werkzeug.security import generate_password_hash
 
 class AdminManager:
+    """Singleton class to manage all admin data-related database operations."""
     _instance = None
 
     def __new__(cls):

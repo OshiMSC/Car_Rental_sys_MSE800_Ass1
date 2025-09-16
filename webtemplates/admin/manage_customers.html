@@ -28,6 +28,7 @@
           class="{% if request.path == '/admin/dashboard' %}active{% endif %}">Dashboard</a>
         <a href="{{ url_for('manage_cars') }}"
           class="{% if request.path == '/admin/manage_cars' %}active{% endif %}">Cars</a>
+          <a href="{{ url_for('admin_car_calendar') }}" class="{% if request.path == '/admin/car_calendar' %}active{% endif %}">Car Availability</a>
         <a href="{{ url_for('manage_customers') }}"
           class="{% if request.path == '/admin/manage_customers' %}active{% endif %}">Customers</a>
         <a href="{{ url_for('admin_manage_bookings') }}"
