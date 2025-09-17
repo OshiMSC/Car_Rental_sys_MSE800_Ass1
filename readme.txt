@@ -1,87 +1,97 @@
-Car Rental System (Flask Web App)
-Description:
-This is a web-based car rental system developed using Python and Flask. It enables customers to view available cars, make bookings, manage their favorites, and track upcoming rentals.
-Admins have the capability to manage cars, approve or reject bookings, and view revenue statistics. The system utilizes SQLite for database management and incorporates Bootstrap for responsive design, 
-along with FullCalendar for visualizing car availability.
+🚗 Car Rental System (Flask Web App)
 
-1. Features
-    1.1Customer Features
+📖 Description
 
-        - View available cars with detailed information.
-        - Book cars with start and end dates.
-        - See booking history and upcoming rentals.
-        - Save favorite cars and receive notifications when they become available.
-        - Filter cars using search functionality.
-        - Calendar view to check car availability.
+This is a web-based Car Rental System developed using Python (Flask).
+It enables customers to view available cars, make bookings, manage favorites, and track rentals.
+Admins can manage cars, approve/reject bookings, and analyze revenue.
+The project uses SQLite as a lightweight database and Bootstrap + FullCalendar for a clean, responsive UI.
 
-    1.2 Admin Features
+✨ Features
+    👤 Customer Features
+    🚘 View available cars with details
+    📅 Book cars with start & end dates
+    📝 See booking history & upcoming rentals
+    ❤️ Save favorite cars + get availability notifications
+    🔍 Filter cars with search
+    🗓️ Calendar view for car availability
 
-    - Add, update, or delete cars.
-    - Approve or reject booking requests.
-    - View revenue statistics (daily, weekly, monthly) with charts.
-    - Manage customers and their bookings.
-    - Calendar view for monitoring car availability.
+🛠️ Admin Features
 
-2. Additional Features
+    ➕ Add, ✏️ update, ❌ delete cars
+    ✅ Approve / ❌ reject bookings
+    📊 View revenue stats (daily, weekly, monthly)
+    👥 Manage customers & bookings
+    🗓️ Calendar monitoring for all cars
 
-    - Secure login system using hashed passwords with Werkzeug.
-    - Flash messages to notify users about operations.
-    - Responsive and user-friendly UI with Bootstrap.
-    - Integration with FullCalendar for visual availability management.
+🔒 Additional Features
 
-3. Technologies Used
+    🔐 Secure login with hashed passwords (Werkzeug)
+    ⚡ Flash messages for user feedback
+    📱 Mobile-responsive UI with Bootstrap
+    📅 Car availability visualization (FullCalendar)
 
-    - Backend: Python 3.13, Flask
-    - Database: SQLite
-    - Frontend: HTML, CSS, Bootstrap 5
-    - Calendar: FullCalendar 6
-    - Password Security: Werkzeug
-    - Others: JavaScript for dynamic interactions
+🛠️ Technologies Used
 
-4. Setup Instructions
- Initialize the Database
-    - Run the database setup script to create all necessary tables:
-            python database.py
-    - Run the Application
-            python app.py
-    - Open in Browser
-            http://127.0.0.1:5000/
+    Backend: Python 3.13, Flask
+    Database: SQLite
+    Frontend: HTML, CSS, Bootstrap 5
+    Calendar: FullCalendar 6
+    Security: Werkzeug password hashing
+    Other: JavaScript (for dynamic interactions)
 
-            Setup Instructions
+⚙️ Setup Instructions
 
-Clone the repository
+    1️⃣ Clone the repository
 
-git clone <your-repo-url>
-cd <project-folder>
+    - git clone <your-repo-url>
+    - cd <project-folder>
 
+    3️⃣ Install dependencies
+    Ensure you have Python 3.9+ installed.
+        - pip install Flask==2.3.5
+        - pip install Werkzeug==2.3.7
 
-Create a Python virtual environment
+    4️⃣ Initialize the Database
 
-python -m venv venv
-source venv/bin/activate   # Linux/macOS
-venv\Scripts\activate      # Windows
+        - python database.py
 
+    5️⃣ Run the Application
 
-Install dependencies
+        - python app.py
 
-pip install -r requirements.txt
+    6️⃣ Open in Browser
+        👉 http://127.0.0.1:5000/
 
+🗄️ Database Backup & Restore (⚠️ Important)
 
-Run the application
+When you download the project from GitHub, the database (needcar.db) may sometimes be empty.
+To avoid issues, I included backup & restore scripts:
 
-python app.py
+    ▶️ Restore Data (if DB is empty)
+        - python restore_db.py
 
+✅ This will re-insert the sample cars, customers, and bookings from a backup file into needcar.db.
+So the system will work immediately with test data.
 
-Access the application
-Open your browser and go to: http://127.0.0.1:5000/
+    💾 Backup Current Data 
+        - python backup_db.py
 
-requirements.txt
-Flask==2.3.5
-Werkzeug==2.3.7
+✅ This will dump all your current database content into a backup text file.
+Useful if you want to preserve data before sharing or resetting.
 
+📝 Notes
 
-Notes:
+    - sqlite3 and datetime are part of Python’s standard library → no installation required.
+    - Bootstrap & FullCalendar are included via CDN → no extra setup needed.
 
-sqlite3 and datetime are part of Python standard library; no installation needed.
-
-Bootstrap and FullCalendar are included via CDN, so no local installation is required.
+User Credentials:
+    ADMIN:
+        - User Name: admin@needcar.com
+        - Password: admin123
+    USER 01 : 
+        - User Name: oshadeedasanayake@gmail.com
+        - Password: oshi@123
+    NEW USER :
+        - User Name: user@gmail.com
+        - Password: user@123
