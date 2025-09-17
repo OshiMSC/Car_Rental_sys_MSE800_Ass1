@@ -340,14 +340,14 @@ class BookingManager:
             end_date = datetime.strptime(booking['end_date'], "%Y-%m-%d")
             return_date = datetime.strptime(return_date_str, "%Y-%m-%d")
 
-            # ❌ Case 1: Return before booking start
+            # Case 1: Return before booking start
             if return_date < start_date:
                 return False, "Return date cannot be before the booking start date."
 
-            # ✅ Case 2: Return on or before booking end (normal return, no fine)
+            # Case 2: Return on or before booking end (normal return, no fine)
             if return_date <= end_date:
                 fine_amount = 0.0
-            # ✅ Case 3: Return after booking end (late return → fine applied)
+            # Case 3: Return after booking end (late return → fine applied)
             else:
                 late_days = (return_date - end_date).days
                 fine_amount = fine_amount if fine_amount > 0 else late_days * 20  
