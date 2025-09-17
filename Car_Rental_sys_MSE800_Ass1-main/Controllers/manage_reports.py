@@ -28,6 +28,10 @@ class ReportManager:
         if fetchall:
             return self.__cursor.fetchall()
         return self.__cursor
+    
+    def _rows_to_dicts(self, rows):
+        columns = [desc[0] for desc in self._cursor.description]
+        return [dict(zip(columns, row)) for row in rows]
 
     # ---------------- Reports Summary ----------------
     def get_total_cars(self):
@@ -55,57 +59,86 @@ class ReportManager:
         )
 
     def get_bookings_report(self, from_date=None, to_date=None):
-        query = """
-            SELECT b.booking_id, c.full_name as customer, car.make || ' ' || car.model as car,
-                   b.start_date, b.status
-            FROM booking b
-            JOIN customers c ON b.customer_id = c.customer_id
-            JOIN car ON b.car_id = car.car_id
         """
+        Fetch all completed bookings with customer, car, rent cost, fine, and total cost.
+        Can filter by start and end dates.
+        """
+        sql = """
+            SELECT 
+                CB.completed_id,
+                CB.booking_id,
+                C.full_name AS customer,
+                Car.make || ' ' || Car.model AS car_name,
+                Car.rent_price_per_day,
+                CB.start_date,
+                CB.end_date,
+                CB.return_date,
+                CB.fine_amount,
+                ((julianday(CB.end_date) - julianday(CB.start_date) + 1) * Car.rent_price_per_day) AS rent_cost
+            FROM CompletedBookings CB
+            JOIN Car ON CB.car_id = Car.car_id
+            JOIN customers C ON CB.customer_id = C.customer_id
+            WHERE 1=1
+        """
+
         params = []
-        if from_date and to_date:
-            query += " WHERE b.start_date BETWEEN ? AND ?"
-            params = [from_date, to_date]
+        if from_date:
+            sql += " AND CB.start_date >= ?"
+            params.append(from_date)
+        if to_date:
+            sql += " AND CB.end_date <= ?"
+            params.append(to_date)
 
-        query += " ORDER BY b.start_date DESC"
-        rows = self.__execute(query, params, fetchall=True)
+        sql += " ORDER BY CB.start_date ASC"
 
-        return [
-            {
-                "booking_id": r["booking_id"],
-                "customer": r["customer"],
-                "car": r["car"],
-                "date": r["start_date"],
-                "status": r["status"],
-            }
-            for r in rows
-        ]
+        rows = self._execute(sql, tuple(params), fetchall=True)
+        
+        # Convert rows to list of dicts and calculate total_cost
+        bookings = []
+        for row in rows:
+            row = dict(row)
+            row['total_cost'] = (row['rent_cost'] or 0) + (row['fine_amount'] or 0)
+            bookings.append(row)
+
+        return bookings
 
     def get_payments_report(self, from_date=None, to_date=None):
-        query = """
-            SELECT p.payment_id, c.full_name as customer, p.amount, p.payment_date, p.status
-            FROM Payment p
-            JOIN booking b ON p.booking_id = b.booking_id
-            JOIN customers c ON b.customer_id = c.customer_id
         """
+        Fetch all payments with customer name, amount, date, and status.
+        Can filter by date range.
+        """
+        sql = """
+            SELECT 
+                P.payment_id,
+                P.booking_id,
+                C.full_name AS customer,
+                P.amount,
+                P.payment_date,
+                P.status
+            FROM Payment P
+            JOIN booking B ON P.booking_id = B.booking_id
+            JOIN customers C ON B.customer_id = C.customer_id
+            WHERE 1=1
+        """
+
         params = []
-        if from_date and to_date:
-            query += " WHERE p.payment_date BETWEEN ? AND ?"
-            params = [from_date, to_date]
+        if from_date:
+            sql += " AND P.payment_date >= ?"
+            params.append(from_date)
+        if to_date:
+            sql += " AND P.payment_date <= ?"
+            params.append(to_date)
 
-        query += " ORDER BY p.payment_date DESC"
-        rows = self.__execute(query, params, fetchall=True)
+        sql += " ORDER BY P.payment_date DESC"
 
-        return [
-            {
-                "payment_id": r["payment_id"],
-                "customer": r["customer"],
-                "amount": r["amount"],
-                "date": r["payment_date"],
-                "status": r["status"],
-            }
-            for r in rows
-        ]
+        rows = self._execute(sql, tuple(params), fetchall=True)
+        
+        # Convert rows to list of dicts
+        payments = [dict(row) for row in rows]
+
+        return payments
+
+
 
     # ---------------- Revenue Breakdown ----------------
     def get_daily_revenue(self):

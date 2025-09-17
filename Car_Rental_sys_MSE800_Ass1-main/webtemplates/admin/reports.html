@@ -82,59 +82,67 @@
           <h5>Bookings Report</h5>
           <table class="table table-hover table-bordered">
             <thead class="table-dark">
-              <tr>
-                <th>#</th>
-                <th>Booking ID</th>
-                <th>Customer</th>
-                <th>Car</th>
-                <th>Date</th>
-                <th>Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {% for booking in bookings_report %}
-              <tr>
-                <td>{{ loop.index }}</td>
-                <td>#{{ booking['booking_id'] }}</td>
-                <td>{{ booking['customer'] }}</td>
-                <td>{{ booking['car_name'] }}</td>
-                <td>{{ booking['start_date'] }} → {{ booking['end_date'] }}</td>
-                <td><span class="status-badge status-{{ booking['status'] }}">{{ booking['status'] }}</span></td>
-              </tr>
-              {% else %}
-              <tr>
-                <td colspan="6" class="text-center text-muted">No bookings found.</td>
-              </tr>
-              {% endfor %}
-            </tbody>
+            <tr>
+              <th>#</th>
+              <th>Booking ID</th>
+              <th>Customer</th>
+              <th>Car</th>
+              <th>Start → End</th>
+              <th>Rent ($)</th>
+              <th>Fine ($)</th>
+              <th>Total ($)</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for booking in bookings_report %}
+            <tr>
+              <td>{{ loop.index }}</td>
+              <td>#{{ booking['booking_id'] }}</td>
+              <td>{{ booking['customer_name'] }}</td>
+              <td>{{ booking['car_name'] }}</td>
+              <td>{{ booking['start_date'] }} → {{ booking['end_date'] }}</td>
+              <td>${{ "%.2f"|format(booking['rent_cost']) }}</td>
+              <td>${{ "%.2f"|format(booking['fine_amount']) }}</td>
+              <td>${{ "%.2f"|format(booking['total_cost']) }}</td>
+              <td><span class="status-badge status-{{ booking['status'] }}">{{ booking['status'] }}</span></td>
+            </tr>
+            {% else %}
+            <tr>
+              <td colspan="9" class="text-center text-muted">No bookings found.</td>
+            </tr>
+            {% endfor %}
+          </tbody>
           </table>
 
           <h5>Payments Report</h5>
           <table class="table table-hover table-bordered">
             <thead class="table-dark">
-              <tr>
-                <th>#</th>
-                <th>Customer</th>
-                <th>Amount</th>
-                <th>Date</th>
-                <th>Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {% for payment in payments_report %}
-              <tr>
-                <td>{{ loop.index }}</td>
-                <td>{{ payment['customer'] }}</td>
-                <td>${{ "%.2f"|format(payment['amount']) }}</td>
-                <td>{{ payment['payment_date'] }}</td>
-                <td><span class="status-badge status-{{ payment['status'] }}">{{ payment['status'] }}</span></td>
-              </tr>
-              {% else %}
-              <tr>
-                <td colspan="5" class="text-center text-muted">No payments found.</td>
-              </tr>
-              {% endfor %}
-            </tbody>
+            <tr>
+              <th>#</th>
+              <th>Customer</th>
+              <th>Booking ID</th>
+              <th>Amount ($)</th>
+              <th>Date</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for payment in payments_report %}
+            <tr>
+              <td>{{ loop.index }}</td>
+              <td>{{ payment['customer'] }}</td>
+              <td>#{{ payment['booking_id'] }}</td>
+              <td>${{ "%.2f"|format(payment['amount']) }}</td>
+              <td>{{ payment['payment_date'] }}</td>
+              <td><span class="status-badge status-{{ payment['status'] }}">{{ payment['status'] }}</span></td>
+            </tr>
+            {% else %}
+            <tr>
+              <td colspan="6" class="text-center text-muted">No payments found.</td>
+            </tr>
+            {% endfor %}
+          </tbody>
           </table>
         </div>
       </main>
