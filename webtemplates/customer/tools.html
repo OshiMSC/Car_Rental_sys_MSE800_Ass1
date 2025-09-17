@@ -189,6 +189,22 @@ compareBtn.addEventListener("click", function() {
   });
   new bootstrap.Modal(document.getElementById("compareModal")).show();
 });
+ // ---------- Restrict past dates for booking start/end ----------
+  const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+  const startDateInput = document.getElementById('startDate');
+  const endDateInput = document.getElementById('endDate');
+
+  if (startDateInput && endDateInput) {
+    startDateInput.setAttribute('min', today);
+    endDateInput.setAttribute('min', today);
+
+    startDateInput.addEventListener('change', function() {
+      endDateInput.min = this.value;
+      if (endDateInput.value < this.value) {
+        endDateInput.value = this.value;
+      }
+    });
+  }
 </script>
 
 </body>
