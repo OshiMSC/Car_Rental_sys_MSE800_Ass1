@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Dashboard - Manage Bookings</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+
+<body style="background-color: #f8f9fa;">
+  <div class="container-fluid">
+    <div class="row">
+      <!-- Sidebar -->
+      <nav class="col-md-3 col-lg-2 adsidebar">
+        <h3 class="text-white text-center mb-4">Admin Panel</h3>
+        <a href="{{ url_for('admin_dashboard') }}"
+          class="{% if request.path == '/admin/dashboard' %}active{% endif %}">Dashboard</a>
+        <a href="{{ url_for('manage_cars') }}"
+          class="{% if request.path == '/admin/manage_cars' %}active{% endif %}">Cars</a>
+        <a href="{{ url_for('admin_car_calendar') }}"
+          class="{% if request.path == '/admin/car_calendar' %}active{% endif %}">Car Availability</a>
+        <a href="{{ url_for('manage_customers') }}"
+          class="{% if request.path == '/admin/manage_customers' %}active{% endif %}">Customers</a>
+        <a href="{{ url_for('admin_manage_bookings') }}"
+          class="{% if request.path == '/admin/manage_bookings' %}active{% endif %}">Bookings</a>
+        <a href="{{ url_for('payments') }}"
+          class="{% if request.path == '/admin/payments' %}active{% endif %}">Payments</a>
+        <a href="{{ url_for('reports') }}"
+          class="{% if request.path == '/admin/reports' %}active{% endif %}">Reports</a>
+        <a href="{{ url_for('admin_profile') }}"
+          class="{% if request.path == '/admin/settings' %}active{% endif %}">Settings</a>
+        <a href="{{ url_for('logout') }}" class="text-danger">Logout</a>
+      </nav>
+
+      <!-- Main Content -->
+      <main class="col-md-9 col-lg-10 content">
+        <h2 class="mb-4">Manage Bookings</h2>
+
+        <!-- Flash Messages -->
+        {% include 'admin/_admin_flash_messages.html' %}
+
+        <!-- Add Booking Button -->
+        <div class="mb-3">
+          <button class="btn sd" data-bs-toggle="modal" data-bs-target="#addBookingModal">Add Booking</button>
+        </div>
+
+        <!-- Pending Booking Requests -->
+        <div class="card mb-4 p-3">
+          <h5>Pending Booking Requests</h5>
+          <table class="table table-striped table-hover">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Customer</th>
+                <th>Car</th>
+                <th>Start</th>
+                <th>End</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for booking in pending_requests %}
+              <tr>
+                <td>{{ loop.index }}</td>
+                <td>{{ booking.customer_name }}</td>
+                <td>{{ booking.car_name }}</td>
+                <td>{{ booking.start_date }}</td>
+                <td>{{ booking.end_date }}</td>
+                <td>
+                  <form action="{{ url_for('update_booking', booking_id=booking.booking_id) }}" method="POST"
+                    class="d-inline">
+                    <input type="hidden" name="status" value="Confirmed">
+                    <button type="submit" class="btn btn-success btn-sm">Approve</button>
+                  </form>
+                  <form action="{{ url_for('update_booking', booking_id=booking.booking_id) }}" method="POST"
+                    class="d-inline">
+                    <input type="hidden" name="status" value="Cancelled">
+                    <button type="submit" class="btn btn-danger btn-sm">Reject</button>
+                  </form>
+                </td>
+              </tr>
+              {% else %}
+              <tr>
+                <td colspan="6" class="text-center text-muted">No pending bookings</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Confirmed Bookings -->
+        <div class="card mb-4 p-3">
+          <h5>Confirmed Bookings</h5>
+          <table class="table table-striped table-hover">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Customer</th>
+                <th>Car</th>
+                <th>Start</th>
+                <th>End</th>
+                <th>Return</th>
+                <th>Fine ($)</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for booking in confirmed_bookings %}
+              <tr>
+                <td>{{ loop.index }}</td>
+                <td>{{ booking.customer_name }}</td>
+                <td>{{ booking.car_name }}</td>
+                <td>{{ booking.start_date }}</td>
+                <td>{{ booking.end_date }}</td>
+                <td>
+                  <form action="{{ url_for('return_car', booking_id=booking.booking_id) }}" method="POST"
+                    class="d-flex gap-1">
+                    <input type="date" name="return_date" class="form-control form-control-sm return-date"
+                      data-end="{{ booking.end_date }}" required>
+                    <input type="hidden" name="fine_amount" class="fine-input" value="0">
+                    <button type="submit" class="btn btn-warning btn-sm">Return</button>
+                  </form>
+                </td>
+                <td class="fine-display">0</td>
+              </tr>
+              {% else %}
+              <tr>
+                <td colspan="7" class="text-center text-muted">No confirmed bookings</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Completed Bookings & Fines -->
+        <div class="card mb-4 p-3">
+          <h5>Completed Bookings & Fines</h5>
+          <table class="table table-striped table-hover">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Customer</th>
+                <th>Car</th>
+                <th>Start</th>
+                <th>End</th>
+                <th>Fine ($)</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for booking in completed_bookings %}
+              <tr>
+                <td>{{ loop.index }}</td>
+                <td>{{ booking.customer_name }}</td>
+                <td>{{ booking.car_name }}</td>
+                <td>{{ booking.start_date }}</td>
+                <td>{{ booking.end_date }}</td>
+                <td>{{ booking.fine_amount or 0 }}</td>
+              </tr>
+              {% else %}
+              <tr>
+                <td colspan="6" class="text-center text-muted">No completed bookings yet</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+
+      </main>
+    </div>
+  </div>
+
+  <!-- Add Booking Modal -->
+  <div class="modal fade" id="addBookingModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+      <form method="POST" action="{{ url_for('add_booking') }}">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">Add Booking</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+          </div>
+          <div class="modal-body">
+            <div class="mb-3">
+              <label class="form-label">Customer</label>
+              <select class="form-control" name="customer_id" required>
+                {% for customer in customers %}
+                <option value="{{ customer.customer_id }}">{{ customer.full_name }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Car</label>
+              <select class="form-control" name="car_id" required>
+                {% for car in available_cars %}
+                <option value="{{ car.car_id }}">{{ car.make }} {{ car.model }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Start Date</label>
+              <input type="date" name="start_date" class="form-control" required>
+            </div>
+            <div class="mb-3">
+              <label class="form-label">End Date</label>
+              <input type="date" name="end_date" class="form-control" required>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="submit" class="btn btn-primary">Add Booking</button>
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+  <script>
+    const dailyFine = 20; // $20 per overdue day
+
+    document.querySelectorAll('.return-date').forEach(input => {
+      input.addEventListener('change', (e) => {
+        const returnDate = new Date(e.target.value);
+        const endDate = new Date(e.target.dataset.end);
+
+        let fine = 0;
+        if (returnDate > endDate) {
+          const diffTime = returnDate - endDate;
+          const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+          fine = diffDays * dailyFine;
+        }
+
+        // Update hidden input
+        e.target.closest('form').querySelector('.fine-input').value = fine;
+
+        // Update table display
+        const fineCell = e.target.closest('tr').querySelector('.fine-display');
+        fineCell.innerText = fine;
+      });
+    });
+  </script>
+</body>
+
+</html>
