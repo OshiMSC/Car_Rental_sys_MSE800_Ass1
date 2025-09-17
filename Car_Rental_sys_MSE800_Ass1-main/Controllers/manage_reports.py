@@ -58,7 +58,7 @@ class ReportManager:
         query = """
             SELECT b.booking_id, c.full_name as customer, car.make || ' ' || car.model as car,
                    b.start_date, b.status
-            FROM Booking b
+            FROM booking b
             JOIN customers c ON b.customer_id = c.customer_id
             JOIN car ON b.car_id = car.car_id
         """
@@ -85,7 +85,7 @@ class ReportManager:
         query = """
             SELECT p.payment_id, c.full_name as customer, p.amount, p.payment_date, p.status
             FROM Payment p
-            JOIN Booking b ON p.booking_id = b.booking_id
+            JOIN booking b ON p.booking_id = b.booking_id
             JOIN customers c ON b.customer_id = c.customer_id
         """
         params = []
