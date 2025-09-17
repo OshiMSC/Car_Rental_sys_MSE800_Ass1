@@ -1,0 +1,297 @@
+    /* Body Styling */
+    body{
+      font-family: "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+      color: #212529;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+        /* Navbar */
+    .navbar {
+      background: #0d6efd;
+      padding: 1rem;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+    }
+
+    .navbar .navbar-brand {
+      font-weight: 700;
+      font-size: 1.4rem;
+      color: #fff !important;
+    }
+
+    .navbar .btn {
+      border-radius: 8px;
+      padding: 0.5rem 1rem;
+      font-weight: 500;
+    }
+
+    .navbar .btn-light {
+      background: #f8f9fa;
+      border: none;
+    }
+
+    .navbar .btn-primary {
+      background: #0d6efd;
+      border: none;
+      transition: background 0.3s;
+    }
+
+    .navbar .btn-primary:hover {
+      background: #0b5ed7;
+    }
+    .hero {
+      background: url("https://images.unsplash.com/photo-1503376780353-7e6692767b70?auto=format&fit=crop&w=1650&q=80") 
+                  no-repeat center center/cover;
+      height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      color: white;
+      position: relative;
+    }
+    .hero-overlay {
+      position: absolute;
+      top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(0, 72, 128, 0.6);
+    }
+    .hero-content {
+      z-index: 2;
+    }
+    .service-card {
+      transition: transform 0.3s;
+    }
+    .service-card:hover {
+      transform: translateY(-10px);
+    }
+    .footer {
+      background: #001f3f;
+      color: white;
+      padding: 20px 0;
+    }
+    .btn-custom {
+      background: #004e92;
+      color: white;
+      border-radius: 30px;
+      padding: 10px 20px;
+    }
+    .btn-custom:hover {
+      background: #0066cc;
+      color: #fff;
+    }
+  /* Login Page */
+.login-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    background: #f5f7fa;
+}
+
+.login-card {
+    background: white;
+    padding: 30px;
+    border-radius: 12px;
+    box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+    width: 350px;
+    text-align: center;
+}
+
+.login-card h2 {
+    margin-bottom: 20px;
+    color: #2c3e50;
+}
+
+.form-group {
+    text-align: left;
+    margin-bottom: 15px;
+}
+
+.form-group label {
+    display: block;
+    font-weight: bold;
+    margin-bottom: 5px;
+    color: #333;
+}
+
+.form-group input, 
+.form-group select {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+}
+
+.btn-primary {
+    background: #3498db;
+    color: white;
+    padding: 10px 15px;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    width: 100%;
+    font-size: 16px;
+    margin-top: 10px;
+}
+
+.btn-primary:hover {
+    background: #2980b9;
+}
+
+.alt-option {
+    margin-top: 15px;
+    font-size: 14px;
+}
+.alt-option a {
+    color: #3498db;
+    text-decoration: none;
+}
+.alt-option a:hover {
+    text-decoration: underline;
+}
+
+
+/* Register Section */
+.register-section {
+  flex: 1;
+  padding: 5rem 1rem 3rem;
+  margin-top: 2rem; 
+}
+
+.register-card {
+  background: #fff;
+  border-radius: 16px;
+  box-shadow: 0px 6px 20px rgba(0,0,0,0.08);
+  transition: transform 0.2s ease;
+}
+
+.register-card:hover {
+  transform: translateY(-4px);
+}
+
+.register-card h2 {
+  font-weight: 600;
+  color: #0d6efd;
+}
+
+.register-card p {
+  font-size: 0.95rem;
+}
+
+/* Form Controls */
+.form-label {
+  font-weight: 500;
+}
+
+.form-control {
+  border-radius: 10px;
+  padding: 0.75rem;
+  border: 1px solid #dee2e6;
+  transition: border 0.3s, box-shadow 0.3s;
+}
+
+.form-control:focus {
+  border-color: #0d6efd;
+  box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.2);
+}
+
+/* Submit Button */
+.btn-primary.w-100 {
+  border-radius: 12px;
+  padding: 0.75rem;
+  font-size: 1rem;
+  font-weight: 600;
+  margin-top: 0.5rem;
+}
+
+.btn-primary.w-100:hover {
+  background: #0b5ed7;
+}
+
+/* Login Link */
+.register-card a {
+  color: #0d6efd;
+  font-weight: 500;
+}
+
+.register-card a:hover {
+  text-decoration: underline;
+}
+
+/* Right Side Image */
+.register-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 16px;
+  box-shadow: 0px 6px 18px rgba(0,0,0,0.1);
+}
+
+/* Footer */
+footer {
+  text-align: center;
+  padding: 1.2rem;
+  background: #f8f9fa;
+  color: #6c757d;
+  font-size: 0.9rem;
+  border-top: 1px solid #dee2e6;
+}
+ .sidebar {min-height: 100vh;background: linear-gradient(180deg, #0d6efd, #0a58ca);padding-top: 20px;}
+ .sidebar h3 {font-weight: 700;}
+ .sidebar a {color: #fff;display: block;padding: 12px 20px;margin: 5px 10px;border-radius: 8px;font-weight: 500;text-decoration: none;transition: background 0.3s ease;}
+ .sidebar a:hover,.sidebar a.active {  background-color: rgba(255, 255, 255, 0.2);}
+ .content {padding: 30px;}
+ .card { border-radius: 12px; border: 1px solid #0d6efd; box-shadow: 0px 2px 4px rgba(0, 0, 0, 0.05);}
+  .booking-table td,
+  .booking-table th {vertical-align: middle; }
+  .cursor-pointer {cursor: pointer;}
+  .booked-cars {max-height: 300px;overflow-y: auto;}
+  .table thead { background-color: #007bff; color: #fff; }
+  .table tbody tr:hover { background-color: #f1f1f1; }
+  .profile-card {
+      background: #fff;
+      border-radius: 15px;
+      padding: 25px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+    }
+    .profile-card h4 {
+      color: #0d6efd;
+      font-weight: 700;
+      margin-bottom: 20px;
+    }
+    .sd {
+      background-color: #0d6efd;
+      border: none;
+      font-weight: 200;
+      color: white;
+    }
+    .btn-outline-primary {
+      font-weight: 600;
+    }
+    hr {
+      margin: 25px 0;
+    }
+    .booking-details { max-height: 600px; overflow-y: auto; }
+    .booking-details .card { cursor: default; }
+        .adsidebar {
+      min-height: 100vh;
+      background-color: #343a40;
+      padding-top: 20px;
+    }
+    .adsidebar a {
+      color: #fff;
+      display: block;
+      padding: 10px 15px;
+      text-decoration: none;
+    }
+    .adsidebar a:hover,
+    .adsidebar a.active {
+      background-color: #495057;
+      border-radius: 5px;
+    }
+   .status-badge { padding: 5px 10px; border-radius: 8px; font-weight: bold; }
+    .status-Confirmed { background-color: #d4edda; color: #155724; }
+    .status-Pending { background-color: #fff3cd; color: #856404; }
+    .status-Cancelled, .status-Failed { background-color: #f8d7da; color: #721c24; }
