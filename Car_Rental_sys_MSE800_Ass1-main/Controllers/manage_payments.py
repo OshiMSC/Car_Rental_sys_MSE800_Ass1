@@ -24,7 +24,7 @@ class PaymentManager:
         self._upload_folder = upload_folder
         os.makedirs(self._upload_folder, exist_ok=True)
 
-    # ---------------- Private Helpers ----------------
+    # ---------------- Helpers ----------------
     def _execute(self, query, params=(), commit=False, fetchone=False, fetchall=False):
         """Centralized execute method for all queries."""
         self._cursor.execute(query, params)
