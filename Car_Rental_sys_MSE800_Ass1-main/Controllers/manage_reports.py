@@ -102,43 +102,43 @@ class ReportManager:
 
         return bookings
 
-    def get_payments_report(self, from_date=None, to_date=None):
+    def get_payments_report(self, from_date=None, to_date=None, status=None):
         """
-        Fetch all payments with customer name, amount, date, and status.
-        Can filter by date range.
+        Fetch payments with customer name, car info, amount, date, and status.
+        Can filter by date range and optionally by payment status.
         """
         sql = """
             SELECT 
-                P.payment_id,
-                P.booking_id,
-                C.full_name AS customer,
-                P.amount,
-                P.payment_date,
-                P.status
-            FROM Payment P
-            JOIN booking B ON P.booking_id = B.booking_id
-            JOIN customers C ON B.customer_id = C.customer_id
+                p.payment_id,
+                cb.booking_id,
+                c.full_name AS customer,
+                car.make || ' ' || car.model AS car_name,
+                p.amount,
+                p.payment_date,
+                p.status
+            FROM Payment p
+            JOIN CompletedBookings cb ON p.booking_id = cb.booking_id
+            JOIN customers c ON cb.customer_id = c.customer_id
+            JOIN car ON cb.car_id = car.car_id
             WHERE 1=1
         """
 
         params = []
         if from_date:
-            sql += " AND P.payment_date >= ?"
+            sql += " AND p.payment_date >= ?"
             params.append(from_date)
         if to_date:
-            sql += " AND P.payment_date <= ?"
+            sql += " AND p.payment_date <= ?"
             params.append(to_date)
+        if status:
+            sql += " AND p.status = ?"
+            params.append(status)
 
-        sql += " ORDER BY P.payment_date DESC"
+        sql += " ORDER BY p.payment_date DESC"
 
         rows = self.__execute(sql, tuple(params), fetchall=True)
-        
-        # Convert rows to list of dicts
-        payments = [dict(row) for row in rows]
 
-        return payments
-
-
+        return [dict(row) for row in rows]
 
     # ---------------- Revenue Breakdown ----------------
     def get_daily_revenue(self):

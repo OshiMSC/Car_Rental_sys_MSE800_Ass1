@@ -18,8 +18,8 @@ The project uses SQLite as a lightweight database and Bootstrap + FullCalendar f
 
 🛠️ Admin Features
 
-    ➕ Add, ✏️ update, ❌ delete cars
-    ✅ Approve / ❌ reject bookings
+    ➕ Add, update,  delete cars
+    ✅ Approve /  reject bookings
     📊 View revenue stats (daily, weekly, monthly)
     👥 Manage customers & bookings
     🗓️ Calendar monitoring for all cars
@@ -44,8 +44,8 @@ The project uses SQLite as a lightweight database and Bootstrap + FullCalendar f
 
     1️⃣ Clone the repository
 
-    - git clone <your-repo-url>
-    - cd <project-folder>
+    - git clone https://github.com/OshiMSC/Car_Rental_sys_MSE800_Ass1
+    - cd Downloads\Car_Rental_sys_MSE800_Ass1-main
 
     3️⃣ Install dependencies
     Ensure you have Python 3.9+ installed.
