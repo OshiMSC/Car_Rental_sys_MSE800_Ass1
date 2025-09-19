@@ -91,7 +91,6 @@
               <th>Rent ($)</th>
               <th>Fine ($)</th>
               <th>Total ($)</th>
-              <th>Status</th>
             </tr>
           </thead>
           <tbody>
@@ -105,7 +104,6 @@
               <td>${{ "%.2f"|format(booking['rent_cost']) }}</td>
               <td>${{ "%.2f"|format(booking['fine_amount']) }}</td>
               <td>${{ "%.2f"|format(booking['total_cost']) }}</td>
-              <td><span class="status-badge status-{{ booking['status'] }}">{{ booking['status'] }}</span></td>
             </tr>
             {% else %}
             <tr>
@@ -131,8 +129,8 @@
             {% for payment in payments_report %}
             <tr>
               <td>{{ loop.index }}</td>
-              <td>{{ payment['customer'] }}</td>
-              <td>#{{ payment['booking_id'] }}</td>
+             <td>{{ payment['customer'] }}</td>
+              <td>Booking #{{ payment['booking_id'] }}</td>
               <td>${{ "%.2f"|format(payment['amount']) }}</td>
               <td>{{ payment['payment_date'] }}</td>
               <td><span class="status-badge status-{{ payment['status'] }}">{{ payment['status'] }}</span></td>

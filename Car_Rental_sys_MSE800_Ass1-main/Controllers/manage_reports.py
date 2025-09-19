@@ -91,7 +91,7 @@ class ReportManager:
 
         sql += " ORDER BY CB.start_date ASC"
 
-        rows = self._execute(sql, tuple(params), fetchall=True)
+        rows = self.__execute(sql, tuple(params), fetchall=True)
         
         # Convert rows to list of dicts and calculate total_cost
         bookings = []
@@ -131,7 +131,7 @@ class ReportManager:
 
         sql += " ORDER BY P.payment_date DESC"
 
-        rows = self._execute(sql, tuple(params), fetchall=True)
+        rows = self.__execute(sql, tuple(params), fetchall=True)
         
         # Convert rows to list of dicts
         payments = [dict(row) for row in rows]
