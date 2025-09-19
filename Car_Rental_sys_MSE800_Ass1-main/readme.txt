@@ -44,7 +44,7 @@ The project uses SQLite as a lightweight database and Bootstrap + FullCalendar f
 
     1️⃣ Clone the repository
 
-    - git clone https://github.com/OshiMSC/Car_Rental_sys_MSE800_Ass1
+    - git clone https://github.com/OshiMSC/Car_Rental_sys_MSE800_Ass1/tree/main
     - cd Downloads\Car_Rental_sys_MSE800_Ass1-main
 
     3️⃣ Install dependencies
